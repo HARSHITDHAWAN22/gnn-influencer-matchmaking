@@ -111,3 +111,73 @@ plt.ticklabel_format(style='plain')  # Prevents scientific notation
 plt.show()
 
 
+# ==================================================
+# BRAND DATA CLEANING AND PREPROCESSING
+# ==================================================
+
+numeric_cols_brand = brands.select_dtypes(include=['int64', 'float64']).columns
+categorical_cols_brand = brands.select_dtypes(include=['object']).columns
+
+for col in numeric_cols_brand:
+    brands[col].fillna(brands[col].median(), inplace=True)
+
+for col in categorical_cols_brand:
+    brands[col].fillna(brands[col].mode()[0] if not brands[col].mode().empty else 'Unknown', inplace=True)
+
+# Normalize important numeric columns
+cols_to_normalize_brand = ['kpi_target', 'budget_total', 'budget_per_post', 'target_age_min', 'target_age_max']
+
+scaler = MinMaxScaler()
+brands[cols_to_normalize_brand] = scaler.fit_transform(brands[cols_to_normalize_brand])
+
+# Preview processed brand data
+print("Preprocessed Brand Data Preview:")
+print(brands.head())
+
+
+import pandas as pd
+from sklearn.preprocessing import MinMaxScaler
+
+# List of columns to normalize for influencer score calculation (example columns)
+columns_to_normalize = ['followers', 'ENGAGEMENT_RATE', 'AVG_LIKES_COUNT_10', 'AVG_COMMENTS_COUNT_10']
+
+# Normalize specified columns individually using MinMaxScaler
+scaler = MinMaxScaler()
+influencers_data[columns_to_normalize] = scaler.fit_transform(influencers_data[columns_to_normalize])
+
+# Example of creating a composite influencer score from normalized columns
+# You can define weights as per importance or use equal weight average
+weights = {'followers': 0.4, 'ENGAGEMENT_RATE': 0.3, 'AVG_LIKES_COUNT_10': 0.2, 'AVG_COMMENTS_COUNT_10': 0.1}
+
+influencers_data['influencer_score'] = sum(influencers_data[col] * weight for col, weight in weights.items())
+
+
+# Preview the dataframe with the scores
+print(influencers_data[['influencer_score'] + columns_to_normalize].head())
+
+
+# ==================================================
+# FEATURE SCALING FOR MACHINE LEARNING MODELS
+# ==================================================
+
+columns_to_normalize = [
+    'ENGAGEMENT_RATE', 'GROWTH_RATE', 'Content_quality_score',
+    'Consistency_score', 'audience_engagement_score_',
+     'male_pct', 'female_pct'
+]
+
+# Fill missing values with median to avoid issues during scaling
+for col in columns_to_normalize:
+   # influencers_data[col].fillna(influencers_data[col].median(), inplace=True) this wwil not work in pandas 3 so , new syntax below
+    influencers_data[col] = influencers_data[col].fillna(influencers_data[col].median())
+
+# Initialize MinMaxScaler
+scaler = MinMaxScaler()
+
+# Fit and transform the columns, updating in the original dataframe
+influencers_data[columns_to_normalize] = scaler.fit_transform(influencers_data[columns_to_normalize])
+
+# Preview the normalized columns
+print(influencers_data[columns_to_normalize].head())
+
+
