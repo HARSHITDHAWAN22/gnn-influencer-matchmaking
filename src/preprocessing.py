@@ -76,3 +76,38 @@ influencers_data[cols_to_normalize_influencers] = scaler_inf.fit_transform(influ
 # Preview processed influencers data
 print("Preprocessed Influencers Data Preview:")
 display(influencers_data.head()) # Use display for better output
+
+
+# ==================================================
+# LOCATION-WISE ENGAGEMENT ANALYSIS
+# ==================================================
+
+avg_likes = influencers_data.groupby('primary_location')['likes'].mean().sort_values()
+plt.figure(figsize=(12,6))
+avg_likes.plot(kind='bar', color='coral')
+plt.title('Average Likes by Primary Location')
+plt.ylabel('Average Likes')
+plt.show()
+
+
+# ==================================================
+# CATEGORY-WISE INFLUENCER ANALYSIS
+# ==================================================
+
+print("Available columns in influencers_data:")
+print(influencers_data.columns.tolist())
+
+
+# ==================================================
+# FOLLOWER COUNT VS PRICE-PER-POST ANALYSIS
+# ==================================================
+
+plt.figure(figsize=(12, 8))
+sns.scatterplot(x='followers', y='price_per_post', hue='cat_fashion___style', data=influencers_data)
+plt.title('Followers vs Price Per Post by Fashion & Style Category (Actual Values)')
+plt.xlabel('Followers (Actual Count)')
+plt.ylabel('Price Per Post (Actual $)')
+plt.ticklabel_format(style='plain')  # Prevents scientific notation
+plt.show()
+
+
