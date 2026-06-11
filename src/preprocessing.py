@@ -236,5 +236,48 @@ plt.title('Correlation Heatmap')
 plt.show()
 
 
+# ==================================================
+# OUTLIER DETECTION USING INTERQUARTILE RANGE (IQR)
+# ==================================================
+
+
+# Dictionary to store outlier indices for each column
+outliers = {}
+
+# Identify numeric columns in influencers_data
+numeric_cols = influencers_data.select_dtypes(include=['int64', 'float64']).columns
+
+# IQR based outlier detection
+for col in numeric_cols:
+    Q1 = influencers_data[col].quantile(0.25)
+    Q3 = influencers_data[col].quantile(0.75)
+    IQR = Q3 - Q1
+    lower_bound = Q1 - 1.5 * IQR
+    upper_bound = Q3 + 1.5 * IQR
+    # Find outlier indices
+    col_outliers = influencers_data[(influencers_data[col] < lower_bound) | (influencers_data[col] > upper_bound)].index
+    outliers[col] = col_outliers.tolist()
+    print(f"Column '{col}' has {len(col_outliers)} outliers.")
+
+# Example: display outliers in a specific column
+example_col = numeric_cols[0]  # just the first numeric col
+print(f"Outliers in '{example_col}':")
+print(influencers_data.loc[outliers[example_col], [example_col]])
+
+# Optionally, you can choose how to handle/remove these outliers later
+
+# ==================================================
+# LOG TRANSFORMATION OF SKEWED FEATURES
+# ==================================================
+
+influencers_data['sid_profile_log'] = np.log1p(influencers_data['sid_profile'].clip(lower=0))
+influencers_data['following_log'] = np.log1p(influencers_data['following'].clip(lower=0))
+
+# Preview before and after stats for confirmation
+print("Before and After Log Transformation")
+print(influencers_data[['sid_profile', 'sid_profile_log', 'following', 'following_log']].head())
+
+
+
 
 
