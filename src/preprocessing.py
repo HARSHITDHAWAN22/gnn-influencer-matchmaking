@@ -223,3 +223,18 @@ print(f"The average ROI is: {average_roi}")
 print(influencers_data[columns_to_normalize].head())
 
 
+# ==================================================
+# CORRELATION ANALYSIS OF NUMERICAL FEATURES
+# ==================================================
+
+# Select only numeric columns for correlation calculation
+numeric_influencers_data = influencers_data.select_dtypes(include=[np.number])
+
+plt.figure(figsize=(14,12))
+sns.heatmap(numeric_influencers_data.corr(), annot=True, cmap='coolwarm', fmt='.2f')
+plt.title('Correlation Heatmap')
+plt.show()
+
+
+
+
