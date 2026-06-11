@@ -278,6 +278,41 @@ print("Before and After Log Transformation")
 print(influencers_data[['sid_profile', 'sid_profile_log', 'following', 'following_log']].head())
 
 
+# ==================================================
+# WINSORIZATION FOR OUTLIER CAPPING AND DATA STABILITY
+# ==================================================
+
+# Winsorization is applied at the 5th and 95th percentiles.
+# This preserves data diversity while reducing the influence
+# of extreme values that may negatively affect model training.
+# Important outlier information is retained instead of removing
+# observations completely.
+
+
+columns_to_winsorize = [
+    'likes', 'following', 'followers', 'num_posts', 'price_per_post',
+    'kpi_target', 'kpi_actual', 'ROI', 'AVG_LIKES_COUNT_10', 'AVG_COMMENTS_COUNT_10',
+    'ENGAGEMENT_RATE', 'GROWTH_RATE', 'average_collabration_score'
+]
+
+# Apply capping at 5% and 95% percentiles
+lower_quantile = 0.05
+upper_quantile = 0.95
+
+for col in columns_to_winsorize:
+    lower_bound = influencers_data[col].quantile(lower_quantile)
+    upper_bound = influencers_data[col].quantile(upper_quantile)
+    influencers_data[col] = influencers_data[col].clip(lower=lower_bound, upper=upper_bound)
+    print(f"Capped column '{col}' between {lower_bound:.4f} and {upper_bound:.4f}")
+
+# Preview to confirm
+print("\nWinsorized Influencers Data Preview (descriptive statistics):")
+print(influencers_data[columns_to_winsorize].describe())
+
+
+
+
+
 
 
 
