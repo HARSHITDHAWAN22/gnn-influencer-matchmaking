@@ -177,6 +177,48 @@ scaler = MinMaxScaler()
 # Fit and transform the columns, updating in the original dataframe
 influencers_data[columns_to_normalize] = scaler.fit_transform(influencers_data[columns_to_normalize])
 
+
+# ==================================================
+# ROI MODIFICATION, SCALING AND NORMALIZATION
+# ==================================================
+
+# ROI values can vary significantly and may contain extreme or invalid values.
+# To improve model training stability, ROI is transformed and normalized
+# into a standard range of 0 to 1 using MinMax Scaling.
+# This ensures all ROI values are comparable and prevents large variations
+# from negatively affecting the machine learning model.
+
+from sklearn.preprocessing import MinMaxScaler
+
+value_metric = 'kpi_actual'       # Value measure column
+cost_metric = 'price_per_post'    # Cost measure column
+
+# Clean cost column if object type
+if influencers_data[cost_metric].dtype == 'object':
+    influencers_data[cost_metric] = influencers_data[cost_metric].astype(str).str.replace('[₹,]', '', regex=True).astype(float)
+
+epsilon = 1e-6  # small number to avoid zero division
+
+# Calculate ratio-based ROI
+roi_ratio = influencers_data[value_metric] / (influencers_data[cost_metric] + epsilon)
+
+# Replace infinite or NaN values
+roi_ratio.replace([np.inf, -np.inf], np.nan, inplace=True)
+roi_ratio.fillna(0, inplace=True)
+
+# Scale ROI between 0 and 1 for easier comparison
+scaler = MinMaxScaler(feature_range=(0, 1))
+influencers_data['ROI'] = scaler.fit_transform(roi_ratio.values.reshape(-1, 1))
+
+print("Influencers Data with Ratio-based Normalized ROI:")
+print(influencers_data[['brand_id', value_metric, cost_metric, 'ROI']].head())
+
+# Calculate the average of the ROI column
+average_roi = influencers_data['ROI'].mean()
+
+# Print the average ROI
+print(f"The average ROI is: {average_roi}")
+
 # Preview the normalized columns
 print(influencers_data[columns_to_normalize].head())
 
