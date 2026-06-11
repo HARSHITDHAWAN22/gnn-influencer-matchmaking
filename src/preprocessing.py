@@ -310,6 +310,43 @@ print("\nWinsorized Influencers Data Preview (descriptive statistics):")
 print(influencers_data[columns_to_winsorize].describe())
 
 
+# ==================================================
+# MODIFIED Z-SCORE BASED OUTLIER DETECTION AND ANALYSIS
+# ==================================================
+
+# Outliers are identified using the Modified Z-Score method,
+# which is more robust to skewed distributions and extreme values
+# than traditional Z-Score analysis.
+
+def modified_z_score(series):
+    median_val = np.median(series)
+    mad = np.median(np.abs(series - median_val))
+    if mad == 0:
+        return np.zeros(len(series))
+    return 0.6745 * (series - median_val) / mad
+
+# Columns to apply Modified Z-Score
+cols_to_check = ['sid_profile', 'following', 'followers', 'price_per_post']
+
+# Threshold for outlier detection (usually 3.5)
+threshold = 3.5
+
+outlier_indices = {}
+
+for col in cols_to_check:
+    mod_z_scores = modified_z_score(influencers_data[col])
+    outliers = influencers_data[np.abs(mod_z_scores) > threshold].index
+    outlier_indices[col] = outliers.tolist()
+    print(f"Column '{col}' has {len(outliers)} outliers detected by Modified Z-Score.")
+
+# Example: show the first few outliers for 'sid_profile'
+print("Example outliers for 'sid_profile':")
+print(influencers_data.loc[outlier_indices['sid_profile'], ['sid_profile']])
+
+
+
+
+
 
 
 
