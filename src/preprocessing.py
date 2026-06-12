@@ -455,6 +455,24 @@ for col in columns_to_check:
     #                             brands[col])
 
 
+# ==================================================
+# INDUSTRY-WISE KPI TARGET ANALYSIS
+# ==================================================
+
+plt.figure(figsize=(10,6))
+sns.boxplot(x='industry', y='kpi_target', data=brands)
+plt.title('KPI Target by Industry')
+plt.xlabel('Industry')
+plt.ylabel('KPI Target')
+plt.xticks(rotation=45)
+plt.show()
+
+plt.figure(figsize=(10,8))
+corr = brands.select_dtypes(include='number').corr()
+sns.heatmap(corr, annot=True, cmap='coolwarm', fmt='.2f')
+plt.title('Correlation Heatmap of Brand Features')
+plt.show()
+
 
 
 
