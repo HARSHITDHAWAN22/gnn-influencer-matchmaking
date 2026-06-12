@@ -459,6 +459,8 @@ for col in columns_to_check:
 # INDUSTRY-WISE KPI TARGET ANALYSIS
 # ==================================================
 
+#LEARNING: WINZORIZATION CAN INCREASE OUTLIER COUNT IN SOME CASES; Z-SCORE PROVIDED BETTER RESULTS DURING EXPERIMENTATION
+
 plt.figure(figsize=(10,6))
 sns.boxplot(x='industry', y='kpi_target', data=brands)
 plt.title('KPI Target by Industry')
