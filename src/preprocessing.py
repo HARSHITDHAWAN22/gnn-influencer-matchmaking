@@ -344,6 +344,86 @@ print("Example outliers for 'sid_profile':")
 print(influencers_data.loc[outlier_indices['sid_profile'], ['sid_profile']])
 
 
+# ==================================================
+# INFLUENCER SCORE DISTRIBUTION ANALYSIS
+# ==================================================
+
+# Visualizing the distribution of influencer scores
+# to understand score spread, density and potential
+# concentration patterns across influencers.
+
+plt.figure(figsize=(10,6))
+sns.histplot(influencers_data['influencer_score_scaled_back'], bins=50, kde=True, color='skyblue')
+plt.title('Distribution of Influencer Score')
+plt.xlabel('Influencer Score')
+plt.ylabel('Frequency')
+plt.xlim(0, 3)  # Set x-axis limits from 0 to 3
+plt.show()
+
+print(influencers_data['influencer_score'])
+
+verage_score = influencers_data['influencer_score'].mean()
+print(f'Average influencer_score: {average_score}')
+
+sns.pairplot(influencers_data[['followers', 'likes', 'price_per_post', 'ENGAGEMENT_RATE']].sample(500))
+plt.suptitle('Pairplot of Key Influencer Metrics', y=1.02)
+plt.show()
+
+
+# ==================================================
+# BRAND DATA EXPLORATION AND QUALITY ANALYSIS
+# ==================================================
+
+brands.describe()
+
+plt.figure(figsize=(8,5))
+sns.histplot(brands['budget_per_post'], bins=40, kde=True, color='teal')
+plt.title('Distribution of Budget Per Post')
+plt.xlabel('Budget Per Post')
+plt.ylabel('Frequency')
+plt.show()
+
+print(brands.isnull().sum())
+
+
+# ==================================================
+# BRAND FEATURE NORMALIZATION FOR SIMILARITY MATCHING
+# ==================================================
+
+# Select columns to normalize for similarity (adjust if you want more)
+columns_to_normalize = [
+    'kpi_target',
+    'budget_total',
+    'budget_per_post',
+    'target_age_min',
+    'target_age_max'
+]
+
+# Fit and transform using sklearn MinMaxScaler (same as influencers)
+scaler = MinMaxScaler()
+brands[columns_to_normalize] = scaler.fit_transform(brands[columns_to_normalize])
+
+# Show result
+print(brands[columns_to_normalize].describe())
+
+ Columns to check
+columns_to_check = ['kpi_target', 'budget_total', 'budget_per_post', 'target_age_min', 'target_age_max']
+
+# Z-score threshold (commonly 3)
+z_thresh = 3
+
+for col in columns_to_check:
+    col_zscore = (brands[col] - brands[col].mean()) / brands[col].std()
+    outliers = brands[np.abs(col_zscore) > z_thresh]
+    print(f"Column '{col}' has {outliers.shape[0]} outliers using Z-score method.")
+    # Optionally, cap or remove outliers:
+    # brands[col] = np.where(np.abs(col_zscore) > z_thresh,
+    #                             brands[col].median(),
+    #                             brands[col])
+
+
+
+
 
 
 
