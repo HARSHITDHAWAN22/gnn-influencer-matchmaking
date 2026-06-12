@@ -423,6 +423,39 @@ for col in columns_to_check:
 
 
 
+# ==================================================
+# Z-SCORE BASED OUTLIER ANALYSIS FOR BRAND FEATURES
+# ==================================================
+
+# Comparing Z-Score based outlier detection with previous
+# approaches to evaluate its effectiveness on brand features.
+
+from scipy.stats import zscore
+
+cols = ['budget_total', 'budget_per_post']
+z_thresh = 3
+
+for col in cols:
+    z_scores = zscore(brands[col])
+    brands = brands[(abs(z_scores) < z_thresh)]
+
+# Columns to check
+columns_to_check = ['kpi_target', 'budget_total', 'budget_per_post', 'target_age_min', 'target_age_max']
+
+# Z-score threshold (commonly 3)
+z_thresh = 3
+
+for col in columns_to_check:
+    col_zscore = (brands[col] - brands[col].mean()) / brands[col].std()
+    outliers = brands[np.abs(col_zscore) > z_thresh]
+    print(f"Column '{col}' has {outliers.shape[0]} outliers using Z-score method.")
+    # Optionally, cap or remove outliers:
+    # brands[col] = np.where(np.abs(col_zscore) > z_thresh,
+    #                             brands[col].median(),
+    #                             brands[col])
+
+
+
 
 
 
