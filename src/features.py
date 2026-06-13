@@ -85,3 +85,24 @@ brand_numerical_cols = [
     print(f"  Combined features: {brand_features.shape}")
 if col in influencers_data.columns]
 
+
+# ==================================================
+# FEATURE TENSOR GENERATION
+# ==================================================
+
+rint("\n[3/3] Converting to PyTorch tensors...")
+
+    influencer_x = torch.FloatTensor(influencer_features)
+    brand_x = torch.FloatTensor(brand_features)
+
+    print(f"\n✅ Feature preparation complete!")
+    print(f"  Influencer tensor: {influencer_x.shape}")
+    print(f"  Brand tensor: {brand_x.shape}")
+
+    return influencer_x, brand_x
+
+# Prepare features
+influencer_x, brand_x = prepare_complete_node_features(
+    influencers_data, brands, influencer_text_embs, brand_text_embs
+)
+
