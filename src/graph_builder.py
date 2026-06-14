@@ -181,6 +181,39 @@ def create_matching_graph(influencers_data, brands, influencer_x, brand_x):
     data['influencer', 'matched_by', 'brand'].edge_index = edge_index.flip(0)
     data['influencer', 'matched_by', 'brand'].edge_attr = edge_weights
 
+
+
+# ==================================================
+# INFLUENCER SIMILARITY EDGE GENERATION
+# ==================================================
+
+
+print("\n[2/4] Creating influencer-influencer similarity edges...")
+
+    inf_edges = []
+    cat_cols = [col for col in influencers_data.columns if col.startswith('cat_')]
+
+    if len(cat_cols) > 0:
+        # Sample for efficiency
+        sample_infs = min(500, num_influencers)
+        sampled_inf_indices = np.random.choice(num_influencers, sample_infs, replace=False)
+
+        for inf_idx in sampled_inf_indices:
+            inf_cats = influencers_data.iloc[inf_idx][cat_cols].values
+
+            # Find similar influencers (same categories)
+            similarities = (influencers_data[cat_cols].values * inf_cats).sum(axis=1)
+            top_similar = np.argsort(similarities)[-6:-1]  # Top 5 similar (excluding self)
+
+            for similar_idx in top_similar:
+                if similar_idx != inf_idx and similarities[similar_idx] > 0:
+                    inf_edges.append([inf_idx, similar_idx])
+
+    if len(inf_edges) > 0:
+        data['influencer', 'similar_to', 'influencer'].edge_index = \
+            torch.LongTensor(inf_edges).t()
+
+    print(f"  Created {len(inf_edges)} influencer similarity edges")
    
 
 
