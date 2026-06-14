@@ -67,3 +67,29 @@
 #
 # A balanced threshold is used to preserve meaningful matches
 # while maintaining graph connectivity and recommendation quality.
+
+
+# ============================================================================
+# CREATE HETEROGENEOUS GRAPH WITH MULTI-CRITERIA MATCHING
+# ============================================================================
+
+def create_matching_graph(influencers_data, brands, influencer_x, brand_x):
+    """
+    Create heterogeneous graph with edges based on:
+    - Language matching
+    - Content type alignment
+    - Budget compatibility
+    - Engagement requirements
+    """
+    print("\n" + "="*80)
+    print("STEP 4: CREATING HETEROGENEOUS GRAPH")
+    print("="*80)
+
+    data = HeteroData()
+
+    # Add node features
+    data['influencer'].x = influencer_x
+    data['influencer'].num_nodes = len(influencer_x)
+
+    data['brand'].x = brand_x
+    data['brand'].num_nodes = len(brand_x)
