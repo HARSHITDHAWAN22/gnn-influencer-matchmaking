@@ -214,6 +214,48 @@ print("\n[2/4] Creating influencer-influencer similarity edges...")
             torch.LongTensor(inf_edges).t()
 
     print(f"  Created {len(inf_edges)} influencer similarity edges")
+
+
+
+# ==================================================
+# BRAND SIMILARITY EDGE GENERATION
+# ==================================================
+
+print("\n[3/4] Creating brand-brand similarity edges...")
+
+    brand_edges = []
+
+    # Group by industry
+    for industry in brands['industry'].unique()[:10]:  # Limit to top 10 industries
+        brand_indices = brands[brands['industry'] == industry].index.tolist()
+
+        # Connect brands in same industry
+        for i in range(min(len(brand_indices), 20)):
+            for j in range(i+1, min(i+6, len(brand_indices))):
+                brand_edges.append([brand_indices[i], brand_indices[j]])
+                brand_edges.append([brand_indices[j], brand_indices[i]])
+
+    if len(brand_edges) > 0:
+        data['brand', 'similar_to', 'brand'].edge_index = \
+            torch.LongTensor(brand_edges).t()
+
+    print(f"  Created {len(brand_edges)} brand similarity edges")
+
+    # -----------------------------------------------------------------------
+    # SUMMARY
+    # -----------------------------------------------------------------------
+    print("\n[4/4] Graph construction complete!")
+    print("\n" + "="*80)
+    print("HETEROGENEOUS GRAPH STRUCTURE:")
+    print("="*80)
+    print(data)
+    print("="*80)
+
+    return data
+
+# Create the graph
+graph_data = create_matching_graph(influencers_data, brands, influencer_x, brand_x)
+
    
 
 
