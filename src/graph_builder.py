@@ -93,3 +93,95 @@ def create_matching_graph(influencers_data, brands, influencer_x, brand_x):
 
     data['brand'].x = brand_x
     data['brand'].num_nodes = len(brand_x)
+
+
+
+# ==================================================
+# BRAND-INFLUENCER COMPATIBILITY EDGE CREATION
+# ==================================================
+
+ print("\n[1/4] Creating brand-influencer edges based on compatibility...")
+
+    edge_list = []
+    edge_scores = []
+
+    # Create compatibility edges
+    num_brands = len(brands)
+    num_influencers = len(influencers_data)
+
+    # Sample brands for edge creation (to keep graph manageable)
+    sample_size = min(1000, num_brands)
+    sampled_brand_indices = np.random.choice(num_brands, sample_size, replace=False)
+
+    for brand_idx in sampled_brand_indices:
+        brand_row = brands.iloc[brand_idx]
+
+        # Get brand requirements
+        # Can increse the brand requirements later if we want in this section.
+        brand_lang = brand_row.get('language_preference', 'English')
+        brand_budget = brand_row.get('budget_per_post', 0.5)
+        brand_region = brand_row.get('target_audience_region', 'Pan India')
+        brand_format = brand_row.get('preferred_formats', 'Reels')
+
+        # Sample influencers for this brand
+        # Here samples 20 influencer for brand requirement we can change it according to our requirement later.
+        num_matches = min(20, num_influencers)  # Top 20 potential matches per brand
+        candidate_inf_indices = np.random.choice(num_influencers, num_matches, replace=False)
+
+        for inf_idx in candidate_inf_indices:
+            inf_row = influencers_data.iloc[inf_idx]
+
+            # Calculate compatibility score
+            compatibility_score = 0.0
+
+            # 1. Budget compatibility (30% weight)
+            inf_price = inf_row.get('price_per_post', 500) / 1500  # normalize
+            budget_diff = abs(brand_budget - inf_price)
+            budget_score = max(0, 1 - budget_diff) * 0.3
+            compatibility_score += budget_score
+
+            # 2. Language matching (20% weight)
+            # In real scenario, you'd have language info for influencers
+            lang_score = 0.2  # Assume compatible
+            compatibility_score += lang_score
+
+            # 3. Engagement matching (30% weight)
+            inf_engagement = inf_row.get('ENGAGEMENT_RATE', 0)
+            engagement_score = min(1.0, inf_engagement * 100) * 0.3
+            compatibility_score += engagement_score
+
+            # 4. Content quality (20% weight)
+            inf_quality = inf_row.get('Content_quality_score', 0.5)
+            quality_score = inf_quality * 0.2
+            compatibility_score += quality_score
+
+            # Add edge if compatibility is above threshold
+            if compatibility_score > 0.3:  # Threshold for edge creation
+                edge_list.append([brand_idx, inf_idx])
+                edge_scores.append(compatibility_score)
+
+    print(f"  Created {len(edge_list)} compatibility-based edges")
+
+    if len(edge_list) > 0:
+        edge_index = torch.LongTensor(edge_list).t()
+        edge_weights = torch.FloatTensor(edge_scores)
+    else:
+        # Fallback: create random edges
+        print("  WARNING: No compatible edges found. Creating sample edges...")
+        num_edges = 5000
+        brand_indices = torch.randint(0, num_brands, (num_edges,))
+        inf_indices = torch.randint(0, num_influencers, (num_edges,))
+        edge_index = torch.stack([brand_indices, inf_indices], dim=0)
+        edge_weights = torch.rand(num_edges)
+
+    # Add edges to graph (bidirectional)
+    data['brand', 'matches_with', 'influencer'].edge_index = edge_index
+    data['brand', 'matches_with', 'influencer'].edge_attr = edge_weights
+
+    data['influencer', 'matched_by', 'brand'].edge_index = edge_index.flip(0)
+    data['influencer', 'matched_by', 'brand'].edge_attr = edge_weights
+
+   
+
+
+
