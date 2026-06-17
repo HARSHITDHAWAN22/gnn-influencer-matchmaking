@@ -97,4 +97,49 @@ def evaluate(model, data, edge_index, device):
 print("\n Training functions defined!")
 
 
+# ==================================================
+# TRAIN VALIDATION TEST EDGE SPLITTING
+# ==================================================
+
+def split_edges(data, val_ratio=0.1, test_ratio=0.2):
+    """Split edges into train/val/test."""
+    edge_index = data['brand', 'matches_with', 'influencer'].edge_index
+    num_edges = edge_index.size(1)
+
+    indices = torch.randperm(num_edges)
+
+    val_size = int(num_edges * val_ratio)
+    test_size = int(num_edges * test_ratio)
+    train_size = num_edges - val_size - test_size
+
+    train_idx = indices[:train_size]
+    val_idx = indices[train_size:train_size+val_size]
+    test_idx = indices[train_size+val_size:]
+
+    train_edge = edge_index[:, train_idx]
+    val_edge = edge_index[:, val_idx]
+    test_edge = edge_index[:, test_idx]
+
+    # Store in data object
+    data['brand', 'matches_with', 'influencer'].edge_label_index = train_edge
+    data['brand', 'matches_with', 'influencer'].edge_label = torch.ones(train_edge.size(1))
+
+
+    # Add reverse edges for 'matched_by' relationship if not already present
+    if ('influencer', 'matched_by', 'brand') not in data.edge_types:
+        data['influencer', 'matched_by', 'brand'].edge_index = train_edge.flip(0)
+        data['influencer', 'matched_by', 'brand'].edge_label_index = train_edge.flip(0)
+        data['influencer', 'matched_by', 'brand'].edge_label = torch.ones(train_edge.size(1))
+
+    print(f"\nEdge split:")
+    print(f"  Train: {train_size}")
+    print(f"  Val: {val_size}")
+    print(f"  Test: {test_size}")
+
+    return data, train_edge, val_edge, test_edge
+
+# Split data
+graph_data, train_edge, val_edge, test_edge = split_edges(graph_data)
+
+
 
