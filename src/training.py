@@ -179,4 +179,65 @@ def split_edges(data, val_ratio=0.1, test_ratio=0.2):
 graph_data, train_edge, val_edge, test_edge = split_edges(graph_data)
 
 
+# ==================================================
+# MODEL TRAINING AND EARLY STOPPING
+# ==================================================
+
+
+    # Training loop
+    best_val_auc = 0
+    patience = 15
+    patience_counter = 0
+
+    print(f"\n{'='*80}")
+    print("TRAINING PROGRESS")
+    print(f"{'='*80}\n")
+
+    for epoch in range(1, num_epochs + 1):
+        # Train
+        loss = train_epoch(model, data, optimizer, device)
+
+        # Evaluate
+        if epoch % 5 == 0:
+            val_auc, val_ap = evaluate(model, data, val_edge, device)
+
+            print(f"Epoch {epoch:03d} | Loss: {loss:.4f} | "
+                  f"Val AUC: {val_auc:.4f} | Val AP: {val_ap:.4f}")
+
+            # Early stopping
+            if val_auc > best_val_auc:
+                best_val_auc = val_auc
+                patience_counter = 0
+                torch.save(model.state_dict(), 'best_matchmaking_model.pt')
+            else:
+                patience_counter += 1
+                if patience_counter >= patience:
+                    print(f"\n⚠️  Early stopping at epoch {epoch}")
+                    break
+
+    # Load best model
+    model.load_state_dict(torch.load('best_matchmaking_model.pt'))
+    test_auc, test_ap = evaluate(model, data, test_edge, device)
+
+    print(f"\n{'='*80}")
+    print("FINAL TEST RESULTS")
+    print(f"{'='*80}")
+    print(f"Test AUC: {test_auc:.4f}")
+    print(f"Test AP:  {test_ap:.4f}")
+    print(f"{'='*80}\n")
+
+    return model, device
+
+# Train the model
+model, device = train_matchmaking_model(
+    graph_data, train_edge, val_edge, test_edge,
+    hidden_channels=128,
+    out_channels=64,
+    num_epochs=100,
+    lr=0.001
+)
+
+
+
+
 
