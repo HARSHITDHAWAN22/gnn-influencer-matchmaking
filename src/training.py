@@ -24,6 +24,43 @@ def train_epoch(model, data, optimizer, device):
     # Get positive edges
     edge_index = data['brand', 'matches_with', 'influencer'].edge_index
 
+
+# ==================================================
+# MATCHMAKING GNN TRAINING PIPELINE
+# ==================================================
+
+def train_matchmaking_model(data, train_edge, val_edge, test_edge,
+                            hidden_channels=128, out_channels=64,
+                            num_epochs=100, lr=0.001):
+    """Complete training pipeline."""
+
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    print(f"\n{'='*80}")
+    print(f"TRAINING MATCHMAKING GNN MODEL")
+    print(f"{'='*80}")
+    print(f"Device: {device}")
+
+    # Move to device
+    data = data.to(device)
+    train_edge = train_edge.to(device)
+    val_edge = val_edge.to(device)
+    test_edge = test_edge.to(device)
+
+    # Initialize model
+    model = MatchmakingGNN(
+        hidden_channels=hidden_channels,
+        out_channels=out_channels,
+        metadata=data.metadata()
+    ).to(device)
+
+    # Perform a dummy forward pass to initialize lazy layers
+    with torch.no_grad():
+        _ = model(data.x_dict, data.edge_index_dict)
+
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=1e-5)
+
+    print(f"\nModel parameters: {sum(p.numel() for p in model.parameters()):,}")
+
     # Positive samples
     brand_emb = z_dict['brand'][edge_index[0]]
     inf_emb = z_dict['influencer'][edge_index[1]]
