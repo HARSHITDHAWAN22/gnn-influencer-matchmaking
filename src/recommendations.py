@@ -82,3 +82,69 @@ print("="*80)
 # brand requirements and influencer characteristics.
 
 
+# ==================================================
+# RECOMMENDATION EXPORT PIPELINE
+# ==================================================
+
+def export_all_recommendations(model, data, brands, influencers_data,
+                                output_file='matchmaking_recommendations.csv',
+                                top_k=20, device='cuda'):
+    """Export recommendations for all brands to CSV."""
+    print(f"\n{'='*80}")
+    print("EXPORTING ALL RECOMMENDATIONS")
+    print(f"{'='*80}\n")
+
+    recommendations = []
+
+    for brand_idx in range(len(brands)):
+        if brand_idx % 100 == 0:
+            print(f"Processing brand {brand_idx}/{len(brands)}...")
+
+        brand_row = brands.iloc[brand_idx]
+        top_inf, scores = recommend_influencers(model, data, brand_idx, top_k, device)
+
+        for rank, (inf_idx, score) in enumerate(zip(top_inf, scores), 1):
+            inf_row = influencers_data.iloc[inf_idx]
+
+            recommendations.append({
+                'brand_idx': brand_idx,
+                'brand_name': brand_row.get('brand_name', ''),
+                'brand_industry': brand_row.get('industry', ''),
+                'brand_language': brand_row.get('language_preference', ''),
+                'brand_budget': brand_row.get('campaign_budget_range', ''),
+                'influencer_idx': inf_idx,
+                'influencer_username': inf_row.get('username', ''),
+                'influencer_followers': inf_row.get('followers', 0),
+                'influencer_engagement': inf_row.get('ENGAGEMENT_RATE', 0),
+                'influencer_quality': inf_row.get('Content_quality_score', 0),
+                'influencer_price': inf_row.get('price_per_post', 0),
+                'rank': rank,
+                'match_score': score
+            })
+
+    # Create DataFrame and save
+    df = pd.DataFrame(recommendations)
+    df.to_csv(output_file, index=False)
+
+    print(f"\n Recommendations exported to: {output_file}")
+    print(f"Total recommendations: {len(df)}")
+    print(f"\nSample recommendations:")
+    print(df.head(10))
+
+    return df
+
+
+# ==================================================
+# GENERATING FINAL RECOMMENDATION REPORTS
+# ==================================================
+
+# Export recommendations
+recommendations_df = export_all_recommendations(
+    model, graph_data, brands, influencers_data,
+    output_file='matchmaking_recommendations.csv',
+    top_k=20,
+    device=device
+)
+
+
+
