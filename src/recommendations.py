@@ -1,6 +1,6 @@
-# ==================================================
-# INFLUENCER RECOMMENDATION ENGINE
-# ==================================================
+# ============================================================================
+# RECOMMENDATION FUNCTION
+# ============================================================================
 
 @torch.no_grad()
 def recommend_influencers(model, data, brand_idx, top_k=10, device='cuda'):
@@ -27,10 +27,9 @@ def recommend_influencers(model, data, brand_idx, top_k=10, device='cuda'):
 
     return top_indices.cpu().numpy(), top_scores.cpu().numpy()
 
-
-# ==================================================
-# RECOMMENDATION TESTING AND VALIDATION
-# ==================================================
+# ============================================================================
+# TEST RECOMMENDATIONS
+# ============================================================================
 
 print("\n" + "="*80)
 print("TESTING RECOMMENDATIONS")
@@ -66,5 +65,5 @@ for brand_idx in range(min(3, len(brands))):
             print(f"  Categories: {', '.join(active_cats[:3])}")
         print()
 
-print("\n MATCHMAKING MODEL READY!")
+print("\ MATCHMAKING MODEL READY!")
 print("="*80)
