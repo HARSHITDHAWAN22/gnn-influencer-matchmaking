@@ -67,3 +67,18 @@ for brand_idx in range(min(3, len(brands))):
 
 print("\ MATCHMAKING MODEL READY!")
 print("="*80)
+
+
+# ==================================================
+# MATCH SCORE INTERPRETATION
+# ==================================================
+
+# Match Score Guidelines:
+# Score >= 0.40 : Excellent Match
+# Score >= 0.35 : Very Good Match
+# Score >= 0.30 : Good Match
+#
+# Higher scores indicate stronger compatibility between
+# brand requirements and influencer characteristics.
+
+
