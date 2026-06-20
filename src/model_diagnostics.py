@@ -128,4 +128,116 @@ def diagnose_model_issues(model, data, edge_index, device):
     else:
         print("   Model predicts both classes")
 
+
+
+    # ========================================================================
+    # DIAGNOSTIC 3: Confusion Matrix Analysis
+    # ========================================================================
+    print("\n" + "-"*80)
+    print("DIAGNOSTIC 3: CONFUSION MATRIX ANALYSIS")
+    print("-"*80)
+
+    cm = confusion_matrix(y_true, y_pred_05)
+
+    print(f"\n              Predicted")
+    print(f"           No Match  |  Match")
+    print(f"Actual  --------------------------")
+    print(f"No Match   {cm[0,0]:6d}   | {cm[0,1]:6d}")
+    print(f"Match      {cm[1,0]:6d}   | {cm[1,1]:6d}")
+
+    tn, fp, fn, tp = cm.ravel()
+
+    print(f"\nBreakdown:")
+    print(f"  True Negatives:  {tn:,} ")
+    print(f"  False Positives: {fp:,} ")
+    print(f"  False Negatives: {fn:,} ")
+    print(f"  True Positives:  {tp:,} ")
+
+    print("\n📊 DIAGNOSIS:")
+    if tp == 0:
+        print("   CRITICAL: Model NEVER predicts Match correctly!")
+        print("     ROOT CAUSE: Threshold too high or scores too low")
+    elif fn > tp * 2:
+        print("    WARNING: Model misses most true matches")
+        print("     ROOT CAUSE: Low recall - threshold too high")
+    elif fp > tn * 0.5:
+        print("    WARNING: Too many false positives")
+        print("     ROOT CAUSE: Low precision - threshold too low")
+    else:
+        print("   Predictions somewhat balanced")
+
+    # ========================================================================
+    # DIAGNOSTIC 4: Edge Quality Check
+    # ========================================================================
+    print("\n" + "-"*80)
+    print("DIAGNOSTIC 4: TRAINING EDGE QUALITY")
+    print("-"*80)
+
+    num_edges = edge_index.size(1)
+    num_brands = data['brand'].num_nodes
+    num_influencers = data['influencer'].num_nodes
+
+    print(f"\nGraph Statistics:")
+    print(f"  Number of Brands:      {num_brands:,}")
+    print(f"  Number of Influencers: {num_influencers:,}")
+    print(f"  Number of Edges:       {num_edges:,}")
+    print(f"  Avg Edges per Brand:   {num_edges/num_brands:.1f}")
+
+    print("\n DIAGNOSIS:")
+    if num_edges / num_brands < 5:
+        print("    WARNING: Very few edges per brand")
+        print("     ROOT CAUSE: Insufficient training signal")
+    elif num_edges / num_brands > 100:
+        print("    WARNING: Too many edges (possibly random)")
+        print("     ROOT CAUSE: Noisy training data")
+    else:
+        print("   Edge count seems reasonable")
+
+    # ========================================================================
+    # SUMMARY
+    # ========================================================================
+    print("\n" + "="*80)
+    print("DIAGNOSIS SUMMARY")
+    print("="*80)
+
+    issues = []
+
+    if separation < 0.15:
+        issues.append(" CRITICAL: No score separation")
+    if len(unique_preds) == 1:
+        issues.append(" CRITICAL: Predicting only one class")
+    if tp == 0:
+        issues.append(" CRITICAL: Zero true positives")
+    if separation < 0.25:
+        issues.append("  Low score separation")
+    if num_edges / num_brands < 5:
+        issues.append("  Too few training edges")
+
+    if len(issues) == 0:
+        print("\n No critical issues found")
+        print("   Problem likely: threshold or minor tuning needed")
+    else:
+        print("\n ISSUES FOUND:")
+        for issue in issues:
+            print(f"   {issue}")
+
+    return {
+        'pos_mean': pos_scores.mean(),
+        'neg_mean': neg_scores.mean(),
+        'separation': separation,
+        'num_unique_preds': len(unique_preds),
+        'tp': tp,
+        'fp': fp,
+        'fn': fn,
+        'tn': tn,
+        'issues': issues
+    }
+
+# ============================================================================
+# RUN DIAGNOSIS
+# ============================================================================
+
+print("\n🔍 Running comprehensive diagnosis on your model...")
+diagnosis = diagnose_model_issues(model, graph_data, test_edge, device)
+
     
