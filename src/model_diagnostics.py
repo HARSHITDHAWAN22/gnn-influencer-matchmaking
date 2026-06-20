@@ -240,4 +240,159 @@ def diagnose_model_issues(model, data, edge_index, device):
 print("\n🔍 Running comprehensive diagnosis on your model...")
 diagnosis = diagnose_model_issues(model, graph_data, test_edge, device)
 
+
+# ============================================================================
+# STEP 2: PRESCRIBE FIXES
+# ============================================================================
+
+print("\n" + "="*80)
+print(" PRESCRIBED FIXES (In Priority Order)")
+print("="*80)
+
+# Determine root cause and fixes
+if diagnosis['separation'] < 0.15:
+    # CRITICAL: Model can't separate at all
+    print("\n ROOT CAUSE: MODEL CANNOT LEARN")
+    print("-"*80)
+    print("\nYour model fundamentally cannot distinguish matches from non-matches.")
+    print("\nFIXES (Do ALL of these):")
+    print("\n1.  CREATE BETTER TRAINING EDGES (MOST IMPORTANT)")
+    print("   Current: Random edges")
+    print("   Fix: Use compatibility-based edges")
+    print("   Code: Use create_high_quality_edges() from Document [48]")
+    print("\n2.  USE FOCAL LOSS")
+    print("   Current: Standard BCE loss")
+    print("   Fix: Focal Loss handles imbalance better")
+    print("   Code: Use FocalLoss from Document [48]")
+    print("\n3.  TRAIN MUCH LONGER")
+    print("   Current: 100 epochs")
+    print("   Fix: Train for 200-300 epochs")
+    print("   Code: num_epochs=250")
+    print("\n4.  INCREASE MODEL CAPACITY")
+    print("   Current: hidden_channels=128")
+    print("   Fix: hidden_channels=256 or 512")
+    print("   Code: hidden_channels=256")
+
+elif diagnosis['num_unique_preds'] == 1:
+    # Model predicts only one class
+    print("\n🚨 ROOT CAUSE: MODEL PREDICTS ONLY ONE CLASS")
+    print("-"*80)
+    print("\nYour model is outputting all same predictions.")
+    print("\nFIXES (Do in order):")
+    print("\n1.  FIX THRESHOLD")
+    print(f"   Current threshold: 0.5")
+    print(f"   Your pos score mean: {diagnosis['pos_mean']:.4f}")
+    print(f"   Recommended threshold: {diagnosis['pos_mean'] * 0.7:.4f}")
+    print("   Code: Use optimal threshold from evaluation")
+    print("\n2.  ADD WEIGHTED LOSS")
+    print("   Current: Equal weight for pos/neg")
+    print("   Fix: Weight positive samples 2-3x")
+    print("   Code:")
+    print("   weight = torch.ones_like(label)")
+    print("   weight[label == 1] = 2.5")
+    print("   loss = F.binary_cross_entropy_with_logits(pred, label, weight=weight)")
+    print("\n3.  USE HARD NEGATIVE MINING")
+    print("   Code: Use hard_negative_mining() from Document [48]")
+
+elif diagnosis['tp'] == 0:
+    # Zero true positives
+    print("\n ROOT CAUSE: THRESHOLD TOO HIGH")
+    print("-"*80)
+    print("\nYour model can separate, but threshold is wrong.")
+    print("\nFIXES:")
+    print("\n1.  LOWER THRESHOLD (IMMEDIATE FIX)")
+    print(f"   Current: 0.5")
+    print(f"   Your pos mean: {diagnosis['pos_mean']:.4f}")
+    print(f"   Recommended: {max(0.3, diagnosis['pos_mean'] * 0.8):.4f}")
+    print("\n2.  RETRAIN WITH MARGIN LOSS")
+    print("   Forces score separation")
+    print("   Code:")
+    print("   pos_mean = pos_pred.mean()")
+    print("   neg_mean = neg_pred.mean()")
+    print("   margin_loss = F.relu(0.3 - (pos_mean - neg_mean))")
+    print("   total_loss = ce_loss + 0.1 * margin_loss")
+
+else:
+    # Minor issues
+    print("\n  ROOT CAUSE: WEAK TRAINING")
+    print("-"*80)
+    print("\nYour model works but isn't strong enough.")
+    print("\nFIXES:")
+    print("\n1.  BETTER EDGES (HIGH IMPACT)")
+    print("   Use compatibility-based edge creation")
+    print("   Code: Document [48] - create_high_quality_edges()")
+    print("\n2.  FOCAL LOSS (MEDIUM IMPACT)")
+    print("   Better handles class imbalance")
+    print("   Code: Document [48] - FocalLoss")
+    print("\n3.  MORE TRAINING (MEDIUM IMPACT)")
+    print("   Train 150-200 epochs instead of 100")
+    print("\n4.  HARD NEGATIVE MINING (MEDIUM IMPACT)")
+    print("   Focus on difficult examples")
+    print("   Code: Document [48] - hard_negative_mining()")
+
+# ============================================================================
+# STEP 3: QUICK FIX CODE
+# ============================================================================
+
+print("\n" + "="*80)
+print("⚡ QUICK FIX: Try This First")
+print("="*80)
+
+print("""
+# ============================================================================
+# QUICK FIX CODE - Copy & Run This
+# ============================================================================
+
+# Fix 1: Lower threshold (Immediate)
+recommended_threshold = {:.4f}
+
+@torch.no_grad()
+def test_with_new_threshold(model, data, edge_index, threshold, device):
+    model.eval()
+    z_dict = model(data.x_dict, data.edge_index_dict)
+
+    # Positive
+    brand_emb = z_dict['brand'][edge_index[0]]
+    inf_emb = z_dict['influencer'][edge_index[1]]
+    pos_pred = torch.sigmoid(model.predict_match(brand_emb, inf_emb).squeeze())
+
+    # Negative
+    neg_edge_index = torch.stack([
+        torch.randint(0, data['brand'].num_nodes, (edge_index.size(1),), device=device),
+        torch.randint(0, data['influencer'].num_nodes, (edge_index.size(1),), device=device)
+    ], dim=0)
+    neg_brand_emb = z_dict['brand'][neg_edge_index[0]]
+    neg_inf_emb = z_dict['influencer'][neg_edge_index[1]]
+    neg_pred = torch.sigmoid(model.predict_match(neg_brand_emb, neg_inf_emb).squeeze())
+
+    # Combine
+    y_pred_prob = torch.cat([pos_pred, neg_pred]).cpu().numpy()
+    y_true = np.concatenate([np.ones(len(pos_pred)), np.zeros(len(neg_pred))])
+
+    # Apply new threshold
+    y_pred = (y_pred_prob > threshold).astype(int)
+    accuracy = (y_pred == y_true).mean()
+
+    print(f"Threshold {{threshold:.4f}}: Accuracy = {{accuracy:.4f}}")
+    return accuracy
+
+# Test different thresholds
+print("Testing different thresholds:")
+for thresh in [0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5]:
+    test_with_new_threshold(model, graph_data, test_edge, thresh, device)
+
+# Fix 2: If threshold doesn't help, retrain with better settings
+# Use Document [48] complete code
+""".format(max(0.25, diagnosis['pos_mean'] * 0.8)))
+
+print("\n" + "="*80)
+print(" DIAGNOSIS COMPLETE")
+print("="*80)
+print("\nNext Steps:")
+print("1. Try the quick threshold fix above")
+print("2. If accuracy < 75%, use Document [48] for complete retraining")
+print("3. Focus on: Quality edges + Focal loss + Hard negatives")
+print("="*80)
+
+
     
