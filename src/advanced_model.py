@@ -135,3 +135,78 @@ class FixedAdvancedModel(nn.Module):
         return self.predictor(weighted_combined)
 
 
+
+# ============================================================================
+# ADVANCED FOCAL LOSS
+# ============================================================================
+
+class AdvancedFocalLoss(nn.Module):
+    """Focal loss with label smoothing."""
+    def __init__(self, alpha=0.25, gamma=2.5, label_smoothing=0.1):
+        super().__init__()
+        self.alpha = alpha
+        self.gamma = gamma
+        self.label_smoothing = label_smoothing
+
+    def forward(self, inputs, targets):
+        # Label smoothing
+        targets = targets * (1 - self.label_smoothing) + 0.5 * self.label_smoothing
+
+        # Focal loss
+        probs = torch.sigmoid(inputs)
+        ce_loss = F.binary_cross_entropy_with_logits(inputs, targets, reduction='none')
+        p_t = probs * targets + (1 - probs) * (1 - targets)
+        focal_weight = (1 - p_t) ** self.gamma
+        alpha_t = self.alpha * targets + (1 - self.alpha) * (1 - targets)
+        focal_loss = alpha_t * focal_weight * ce_loss
+
+        return focal_loss.mean()
+
+# ============================================================================
+# MIXUP AUGMENTATION
+# ============================================================================
+
+def mixup_data(z_brand, z_inf, labels, alpha=0.2):
+    """Mixup augmentation."""
+    if alpha > 0:
+        lam = np.random.beta(alpha, alpha)
+    else:
+        lam = 1
+
+    batch_size = z_brand.size(0)
+    index = torch.randperm(batch_size).to(z_brand.device)
+
+    mixed_brand = lam * z_brand + (1 - lam) * z_brand[index]
+    mixed_inf = lam * z_inf + (1 - lam) * z_inf[index]
+    mixed_labels = lam * labels + (1 - lam) * labels[index]
+
+    return mixed_brand, mixed_inf, mixed_labels
+
+# ============================================================================
+# HARD NEGATIVE MINING
+# ============================================================================
+
+def hard_negative_mining(z_dict, pos_edge_index, model, device, num_negatives):
+    """Select hard negative samples."""
+    num_brands = z_dict['brand'].size(0)
+    num_influencers = z_dict['influencer'].size(0)
+
+    # Sample more candidates
+    num_candidates = num_negatives * 5
+    neg_brand_idx = torch.randint(0, num_brands, (num_candidates,), device=device)
+    neg_inf_idx = torch.randint(0, num_influencers, (num_candidates,), device=device)
+
+    # Score candidates
+    with torch.no_grad():
+        neg_brand_emb = z_dict['brand'][neg_brand_idx]
+        neg_inf_emb = z_dict['influencer'][neg_inf_idx]
+        neg_scores = torch.sigmoid(
+            model.predict_match(neg_brand_emb, neg_inf_emb).squeeze()
+        )
+
+    # Select hardest
+    _, hard_indices = torch.topk(neg_scores, k=num_negatives)
+
+    return torch.stack([neg_brand_idx[hard_indices], neg_inf_idx[hard_indices]], dim=0)
+
+
