@@ -106,3 +106,45 @@ model = FixedAdvancedModel(hidden_channels=256, out_channels=128, metadata=graph
 model.load_state_dict(torch.load('best_advanced_model.pt', map_location=device))
 
 
+
+# ====================================================================
+# SWEEP THRESHOLD ON VALIDATION SET
+# ====================================================================
+
+best_thresh, best_acc = 0.5, 0.0
+for t in np.linspace(0.01, 0.99, 99):
+    res = evaluate(model, graph_data, val_e, device, threshold=t)
+    if res['accuracy'] > best_acc:
+        best_acc, best_thresh = res['accuracy'], t
+
+print(f"\nBest threshold found: {best_thresh:.2f} (Validation Accuracy: {best_acc:.4f})")
+
+# ====================================================================
+# FINAL EVALUATION
+# ====================================================================
+
+print("\n--- Train ---")
+train_res = evaluate(model, graph_data, train_e, device, best_thresh)
+
+print("\n--- Validation ---")
+val_res = evaluate(model, graph_data, val_e, device, best_thresh)
+
+print("\n--- Test ---")
+test_res = evaluate(model, graph_data, test_e, device, best_thresh)
+
+# ====================================================================
+# SUMMARY TABLE
+# ====================================================================
+
+summary = pd.DataFrame([
+    ['Train', train_res['auc'], train_res['ap'], train_res['accuracy'], train_res['precision'], train_res['recall'], train_res['f1']],
+    ['Validation', val_res['auc'], val_res['ap'], val_res['accuracy'], val_res['precision'], val_res['recall'], val_res['f1']],
+    ['Test', test_res['auc'], test_res['ap'], test_res['accuracy'], test_res['precision'], test_res['recall'], test_res['f1']]
+], columns=['Split', 'AUC-ROC', 'AvgPrecision', 'Accuracy', 'Precision', 'Recall', 'F1-Score'])
+
+print("\n" + "="*80)
+print(summary.to_string(index=False))
+print("="*80)
+
+
+
