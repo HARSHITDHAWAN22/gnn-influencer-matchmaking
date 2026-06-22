@@ -163,6 +163,33 @@ for ax, name, res in zip(axes, splits, results):
     ax.set_xlabel('Predicted Label')
     ax.set_ylabel('True Label')
 
+
+# --- 2️ ROC Curves ---
+plt.figure(figsize=(8, 6))
+for name, res in zip(splits, results):
+    fpr, tpr, _ = roc_curve(res['y_true'], res['y_prob'])
+    plt.plot(fpr, tpr, label=f"{name} (AUC={res['auc']:.3f})")
+plt.plot([0, 1], [0, 1], '--', color='gray')
+plt.title("ROC Curves", fontsize=14, weight='bold')
+plt.xlabel("False Positive Rate")
+plt.ylabel("True Positive Rate")
+plt.legend()
+plt.grid(alpha=0.3)
+plt.show()
+
+
+# --- 3️ Precision–Recall Curves ---
+plt.figure(figsize=(8, 6))
+for name, res in zip(splits, results):
+    precision, recall, _ = precision_recall_curve(res['y_true'], res['y_prob'])
+    plt.plot(recall, precision, label=f"{name} (AP={res['ap']:.3f})")
+plt.title("Precision–Recall Curves", fontsize=14, weight='bold')
+plt.xlabel("Recall")
+plt.ylabel("Precision")
+plt.legend()
+plt.grid(alpha=0.3)
+plt.show()
+
 plt.tight_layout()
 plt.show()
 
