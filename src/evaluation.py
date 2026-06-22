@@ -194,4 +194,19 @@ plt.tight_layout()
 plt.show()
 
 
+ #--- ️4 Bar Chart of Final Metrics ---
+metric_df = pd.DataFrame([
+    ['Train', train_res['accuracy'], train_res['precision'], train_res['recall'], train_res['f1']],
+    ['Validation', val_res['accuracy'], val_res['precision'], val_res['recall'], val_res['f1']],
+    ['Test', test_res['accuracy'], test_res['precision'], test_res['recall'], test_res['f1']]
+], columns=['Split', 'Accuracy', 'Precision', 'Recall', 'F1'])
+
+metric_df.set_index('Split').plot(kind='bar', figsize=(10, 6), colormap='viridis')
+plt.title("Model Performance Comparison", fontsize=14, weight='bold')
+plt.ylabel("Score")
+plt.ylim(0, 1.05)
+plt.grid(axis='y', linestyle='--', alpha=0.6)
+plt.show()
+
+
 
