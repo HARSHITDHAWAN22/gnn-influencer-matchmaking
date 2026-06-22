@@ -147,4 +147,24 @@ print(summary.to_string(index=False))
 print("="*80)
 
 
+# ====================================================================
+# VISUALIZATION SECTION
+# ====================================================================
+
+# --- 1️ Confusion Matrices ---
+fig, axes = plt.subplots(1, 3, figsize=(18, 5))
+splits = ['Train', 'Validation', 'Test']
+results = [train_res, val_res, test_res]
+
+for ax, name, res in zip(axes, splits, results):
+    cm = res['cm']
+    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', ax=ax)
+    ax.set_title(f'{name} Confusion Matrix', fontsize=13, weight='bold')
+    ax.set_xlabel('Predicted Label')
+    ax.set_ylabel('True Label')
+
+plt.tight_layout()
+plt.show()
+
+
 
