@@ -41,3 +41,38 @@ def build_pair_dataset(model, data, edge_index, device, n_negatives=1):
     X = torch.cat([pos_pairs, neg_pairs], dim=0).cpu().numpy()
     y = torch.cat([pos_labels, neg_labels], dim=0).cpu().numpy()
     return X, y
+
+
+# ---------------------------------------------------------------------
+# 2️ Build datasets from the GNN
+# ---------------------------------------------------------------------
+X_train, y_train = build_pair_dataset(model, graph_data, train_e, device)
+X_val,   y_val   = build_pair_dataset(model, graph_data, val_e, device)
+X_test,  y_test  = build_pair_dataset(model, graph_data, test_e, device)
+
+print(f"Train: {X_train.shape}, Val: {X_val.shape}, Test: {X_test.shape}")
+
+# ---------------------------------------------------------------------
+# 3️ Train XGBoost
+# ---------------------------------------------------------------------
+xgb = XGBClassifier(
+    n_estimators=400, max_depth=7, learning_rate=0.05,
+    subsample=0.8, colsample_bytree=0.8,
+    eval_metric='logloss', tree_method='hist', random_state=42
+)
+xgb.fit(X_train, y_train, eval_set=[(X_val, y_val)], verbose=False)
+
+y_pred_prob_xgb = xgb.predict_proba(X_test)[:, 1]
+y_pred_xgb = (y_pred_prob_xgb >= 0.5).astype(int)
+
+# ---------------------------------------------------------------------
+# 4️ Train LightGBM
+# ---------------------------------------------------------------------
+lgbm = lgb.LGBMClassifier(
+    n_estimators=500, learning_rate=0.05, num_leaves=64,
+    subsample=0.8, colsample_bytree=0.8, random_state=42
+)
+lgbm.fit(X_train, y_train, eval_set=[(X_val, y_val)])
+
+y_pred_prob_lgb = lgbm.predict_proba(X_test)[:, 1]
+y_pred_lgb = (y_pred_prob_lgb >= 0.5).astype(int)
