@@ -76,3 +76,23 @@ lgbm.fit(X_train, y_train, eval_set=[(X_val, y_val)])
 
 y_pred_prob_lgb = lgbm.predict_proba(X_test)[:, 1]
 y_pred_lgb = (y_pred_prob_lgb >= 0.5).astype(int)
+
+
+# ---------------------------------------------------------------------
+# 5️ Collect all metrics
+# ---------------------------------------------------------------------
+def compute_metrics(y_true, y_pred, y_prob, name):
+    prec, rec, f1, _ = precision_recall_fscore_support(y_true, y_pred, average='binary', zero_division=0)
+    auc = roc_auc_score(y_true, y_prob)
+    acc = np.mean(y_true == y_pred)
+    return {'Model': name, 'Accuracy': acc, 'Precision': prec, 'Recall': rec, 'F1': f1, 'AUC': auc}
+
+metrics = []
+metrics.append(compute_metrics(test_res['y_true'], (test_res['y_prob'] >= 0.5).astype(int), test_res['y_prob'], 'GNN'))
+metrics.append(compute_metrics(y_test, y_pred_xgb, y_pred_prob_xgb, 'GNN + XGBoost'))
+metrics.append(compute_metrics(y_test, y_pred_lgb, y_pred_prob_lgb, 'GNN + LightGBM'))
+
+metrics_df = pd.DataFrame(metrics)
+print("\n=== Final Model Comparison ===")
+print(metrics_df.to_string(index=False))
+
