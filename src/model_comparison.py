@@ -96,3 +96,48 @@ metrics_df = pd.DataFrame(metrics)
 print("\n=== Final Model Comparison ===")
 print(metrics_df.to_string(index=False))
 
+
+# ---------------------------------------------------------------------
+# 6️ Visualization
+# ---------------------------------------------------------------------
+plt.figure(figsize=(10,6))
+sns.barplot(data=metrics_df.melt(id_vars='Model', var_name='Metric', value_name='Score'),
+            x='Metric', y='Score', hue='Model')
+plt.title("Performance Comparison: GNN vs XGBoost vs LightGBM", fontsize=14, weight='bold')
+plt.ylim(0, 1.05)
+plt.grid(axis='y', linestyle='--', alpha=0.6)
+plt.show()
+
+# --- ROC Curves ---
+plt.figure(figsize=(8,6))
+for (name, y_true, y_prob) in [
+    ('GNN', test_res['y_true'], test_res['y_prob']),
+    ('XGBoost', y_test, y_pred_prob_xgb),
+    ('LightGBM', y_test, y_pred_prob_lgb)
+]:
+    fpr, tpr, _ = roc_curve(y_true, y_prob)
+    plt.plot(fpr, tpr, label=f"{name} (AUC={roc_auc_score(y_true, y_prob):.3f})")
+plt.plot([0,1], [0,1], '--', color='gray')
+plt.title("ROC Curves", fontsize=14, weight='bold')
+plt.xlabel("False Positive Rate")
+plt.ylabel("True Positive Rate")
+plt.legend()
+plt.grid(alpha=0.3)
+plt.show()
+
+# --- Precision–Recall Curves ---
+plt.figure(figsize=(8,6))
+for (name, y_true, y_prob) in [
+    ('GNN', test_res['y_true'], test_res['y_prob']),
+    ('XGBoost', y_test, y_pred_prob_xgb),
+    ('LightGBM', y_test, y_pred_prob_lgb)
+]:
+    precision, recall, _ = precision_recall_curve(y_true, y_prob)
+    plt.plot(recall, precision, label=f"{name} (AP={roc_auc_score(y_true, y_prob):.3f})")
+plt.title("Precision–Recall Curves", fontsize=14, weight='bold')
+plt.xlabel("Recall")
+plt.ylabel("Precision")
+plt.legend()
+plt.grid(alpha=0.3)
+plt.show()
+
