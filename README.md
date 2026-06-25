@@ -13,6 +13,19 @@ The complete workflow covers data preprocessing, feature engineering, graph cons
 
 ## Features
 
+* Models the complete brand–influencer ecosystem as a heterogeneous graph with dedicated Brand and Influencer node types and multiple relationship types.
+* Combines business metrics such as engagement rate, content quality, ROI, pricing, audience demographics, campaign budget, and growth metrics with semantic profile embeddings.
+* Builds compatibility-driven relationships using multiple matching factors instead of relying on simple rule-based filtering.
+* Creates similarity connections between brands and influencers to capture shared interests, content categories, and campaign objectives.
+* Uses a GraphSAGE-based graph learning pipeline to learn meaningful representations and predict brand–influencer compatibility.
+* Implements negative sampling to improve the model's ability to distinguish relevant collaborations from unrelated pairs.
+* Includes a complete data preparation pipeline with missing value handling, feature scaling, ROI engineering, Winsorization, Modified Z-Score analysis, and normalization.
+* Evaluates model performance using Accuracy, Precision, Recall, F1-Score, AUC-ROC, Average Precision, confusion matrices, ROC curves, and Precision–Recall curves.
+* Optimizes prediction thresholds and includes detailed debugging utilities for performance analysis and model validation.
+* Benchmarks graph-learned embeddings with hybrid GNN + XGBoost and GNN + LightGBM pipelines for comparative evaluation.
+* Generates ranked influencer recommendations for every brand and exports the final recommendations for further analysis and integration.
+
+
 ## Project Workflow
 
 ## Project Structure
