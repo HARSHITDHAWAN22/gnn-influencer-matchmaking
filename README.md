@@ -85,6 +85,19 @@ AI-Brand-Influencer-Matchmaking/ │ ├── data/ │ ├── influencers_d
 
 ## Installation
 
+echnology	Usage in Project
+Python	Complete project implementation
+Pandas	Dataset loading, preprocessing, feature engineering and data manipulation
+NumPy	Numerical operations and feature preparation
+PyTorch	Model training, tensor operations and optimization
+PyTorch Geometric	Heterogeneous graph creation, GraphSAGE implementation and graph message passing
+Sentence Transformers (all-MiniLM-L6-v2)	Converting profile, bio and category information into vector embeddings
+Scikit-learn	Feature scaling, label encoding, evaluation metrics and train-validation-test splitting
+XGBoost	Hybrid model trained on graph-generated embeddings for comparison
+LightGBM	Hybrid gradient boosting model for performance benchmarking
+Matplotlib	Training statistics and evaluation visualizations
+Seaborn	Correlation analysis, confusion matrices and performance plots
+
 ## Usage
 
 ## Results
