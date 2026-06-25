@@ -81,6 +81,8 @@ Recommendation Export & Performance Reports
 
 ## Project Structure
 
+AI-Brand-Influencer-Matchmaking/ │ ├── data/ │ ├── influencers_dataset.csv │ └── brands_dataset.csv │ ├── src/ │ ├── preprocessing.py │ ├── embeddings.py │ ├── features.py │ ├── graph_builder.py │ ├── gnn_model.py │ ├── training.py │ ├── recommendations.py │ ├── evaluation.py │ ├── model_comparison.py │ ├── model_diagnostics.py │ └── advanced_model.py │ ├── images/ │ ├── results/ │ ├── requirements.txt ├── README.md └── .gitignore
+
 ## Installation
 
 ## Usage
