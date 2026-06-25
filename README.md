@@ -28,6 +28,57 @@ The complete workflow covers data preprocessing, feature engineering, graph cons
 
 ## Project Workflow
 
+Raw Influencer & Brand Datasets
+                │
+                ▼
+Data Cleaning & Missing Value Handling
+                │
+                ▼
+Feature Engineering
+(ROI Engineering, Normalization, Outlier Analysis,
+Winsorization, Modified Z-Score)
+                │
+                ▼
+Semantic Text Embeddings
+(Sentence Transformers - all-MiniLM-L6-v2)
+                │
+                ▼
+Complete Node Feature Preparation
+(Numerical + Categorical + Text Embeddings)
+                │
+                ▼
+Heterogeneous Graph Construction
+(Brand ↔ Influencer,
+Influencer ↔ Influencer,
+Brand ↔ Brand)
+                │
+                ▼
+Compatibility-Based Edge Generation
+(Budget, Engagement, Content Quality,
+Language & Audience Matching)
+                │
+                ▼
+GraphSAGE Representation Learning
+                │
+                ▼
+Negative Sampling & Model Training
+                │
+                ▼
+Model Evaluation
+(AUC, AP, Accuracy, Precision, Recall,
+F1-Score, ROC, PR Curve, Threshold Optimization)
+                │
+                ▼
+Hybrid Model Comparison
+(GNN vs GNN + XGBoost vs GNN + LightGBM)
+                │
+                ▼
+Ranked Influencer Recommendations
+                │
+                ▼
+Recommendation Export & Performance Reports
+
+
 ## Project Structure
 
 ## Installation
