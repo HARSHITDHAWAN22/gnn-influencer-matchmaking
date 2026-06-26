@@ -133,6 +133,19 @@ After setting up the project and placing the datasets in the required location, 
 10. Export the final recommendations for further analysis or integration.
 
 
+## System Architecture
+
+The pipeline starts by processing separate brand and influencer datasets. During preprocessing, missing values are handled, important features are normalized, ROI is computed, and outliers are analyzed to improve the overall data quality before training.
+
+To capture information that cannot be represented through numerical values alone, profile details, descriptions, locations, and content categories are converted into vector embeddings using the **all-MiniLM-L6-v2** Sentence Transformer model. These embeddings are combined with numerical and categorical features to build complete representations for both brands and influencers.
+
+A heterogeneous graph is then constructed using three different relationship types: **Brand–Influencer**, **Brand–Brand**, and **Influencer–Influencer**. Instead of creating random connections, graph edges are formed by considering factors such as campaign budget, engagement rate, content quality, language preference, audience characteristics, and creator categories.
+
+GraphSAGE is used to learn representations from this graph, while negative sampling helps the model differentiate relevant collaborations from unrelated pairs during training. The learned representations are then used to rank influencers based on their compatibility with each brand.
+
+Finally, the recommendations are evaluated using multiple performance metrics, threshold optimization, confusion matrix analysis, ROC and Precision–Recall curves. The learned graph embeddings are also benchmarked with XGBoost and LightGBM before exporting the final ranked recommendations.
+
+
 ## Results
 
 ## Future Improvements
