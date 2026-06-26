@@ -160,6 +160,16 @@ The repository also includes detailed visualizations, threshold optimization, de
 
 ## Future Improvements
 
+* Integrate real campaign collaboration data to replace heuristic compatibility rules with interaction-driven graph relationships.
+* Extend the feature engineering pipeline with additional business, audience, and campaign-level features as more production data becomes available.
+* Introduce mathematically derived compatibility features and continuously refine the scoring pipeline based on real-world campaign performance.
+* Build an automated training pipeline that periodically retrains the model as new brands, influencers, and collaboration records are added.
+* Automate model validation, testing, threshold optimization, and performance benchmarking before deploying updated recommendation models.
+* Support incremental graph updates, allowing new nodes and relationships to be incorporated without rebuilding the complete graph.
+* Expand the recommendation engine with multimodal features such as image and short-video embeddings to better understand creator content.
+* Develop a production-ready web service with real-time recommendations, monitoring, logging, and model version management.
+
+
 
 ## Technologies Used
 
