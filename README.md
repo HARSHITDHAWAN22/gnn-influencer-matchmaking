@@ -148,7 +148,18 @@ Finally, the recommendations are evaluated using multiple performance metrics, t
 
 ## Results
 
+## Results
+
+The final recommendation pipeline was evaluated using multiple classification and ranking metrics to measure its ability to distinguish suitable brand–influencer collaborations from unrelated pairs. Model performance was analyzed using Accuracy, Precision, Recall, F1-Score, AUC-ROC, Average Precision, confusion matrices, ROC curves, and Precision–Recall curves.
+
+In addition to evaluating the Graph Neural Network, the learned graph embeddings were benchmarked with XGBoost and LightGBM to compare graph-based learning with hybrid machine learning approaches. This comparison helped analyze how effectively graph-generated representations could be utilized by traditional machine learning models.
+
+The repository also includes detailed visualizations, threshold optimization, debugging utilities, and ranked recommendation outputs generated for every brand.
+
+
+
 ## Future Improvements
+
 
 ## Technologies Used
 
