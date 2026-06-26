@@ -83,7 +83,7 @@ Recommendation Export & Performance Reports
 
 AI-Brand-Influencer-Matchmaking/ │ ├── data/ │ ├── influencers_dataset.csv │ └── brands_dataset.csv │ ├── src/ │ ├── preprocessing.py │ ├── embeddings.py │ ├── features.py │ ├── graph_builder.py │ ├── gnn_model.py │ ├── training.py │ ├── recommendations.py │ ├── evaluation.py │ ├── model_comparison.py │ ├── model_diagnostics.py │ └── advanced_model.py │ ├── images/ │ ├── results/ │ ├── requirements.txt ├── README.md └── .gitignore
 
-## Installation
+## Technologies Used
 
 echnology	Usage in Project
 Python	Complete project implementation
@@ -97,6 +97,25 @@ XGBoost	Hybrid model trained on graph-generated embeddings for comparison
 LightGBM	Hybrid gradient boosting model for performance benchmarking
 Matplotlib	Training statistics and evaluation visualizations
 Seaborn	Correlation analysis, confusion matrices and performance plots
+
+
+## Installation
+
+1. Clone the Repository
+git clone https://github.com/YOUR_USERNAME/AI-Brand-Influencer-Matchmaking.git
+cd AI-Brand-Influencer-Matchmaking
+2. Install Dependencies
+pip install -r requirements.txt
+3. Prepare the Datasets
+
+Place the influencer and brand datasets inside the data/ directory.
+
+data/
+├── insta_dataset_with_labels_v1.csv
+└── brand_dataset_india_4500_v2.csv
+4. Run the Project
+
+Open the Jupyter notebook or execute the corresponding modules inside the src/ directory to generate embeddings, build the graph, train the model, and generate recommendations.
 
 ## Usage
 
