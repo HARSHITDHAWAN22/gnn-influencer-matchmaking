@@ -119,6 +119,20 @@ Open the Jupyter notebook or execute the corresponding modules inside the src/ d
 
 ## Usage
 
+After setting up the project and placing the datasets in the required location, the complete pipeline can be executed in the following order:
+
+1. Load the brand and influencer datasets.
+2. Clean the data and prepare the required features.
+3. Generate semantic embeddings from profile and content information.
+4. Build complete node features by combining numerical, categorical, and text-based representations.
+5. Construct the heterogeneous graph and establish compatibility-driven relationships.
+6. Train the GraphSAGE model using positive and negative samples.
+7. Evaluate the trained model using multiple performance metrics and optimize the prediction threshold.
+8. Generate ranked influencer recommendations for each brand.
+9. Compare the graph-based model with hybrid GNN + XGBoost and GNN + LightGBM pipelines.
+10. Export the final recommendations for further analysis or integration.
+
+
 ## Results
 
 ## Future Improvements
