@@ -155,6 +155,14 @@ In addition to evaluating the Graph Neural Network, the learned graph embeddings
 The repository also includes detailed visualizations, threshold optimization, debugging utilities, and ranked recommendation outputs generated for every brand.
 
 
+## Dataset
+
+The datasets used in this project are not included in this repository.
+
+They contain real brand and influencer information collected for research and development purposes. To respect data privacy and licensing considerations, the original datasets are kept private.
+
+If you would like to reproduce the project, you can use a dataset with a similar schema or create your own dataset following the same feature structure used in this implementation.
+
 
 ## Future Improvements
 
@@ -167,8 +175,6 @@ The repository also includes detailed visualizations, threshold optimization, de
 * Expand the recommendation engine with multimodal features such as image and short-video embeddings to better understand creator content.
 * Develop a production-ready web service with real-time recommendations, monitoring, logging, and model version management.
 
-
-## Author
 
 ## Author
 
