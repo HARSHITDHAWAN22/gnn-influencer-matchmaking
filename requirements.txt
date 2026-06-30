@@ -1,1 +1,13 @@
-
+numpy
+pandas
+matplotlib
+seaborn
+scikit-learn
+torch
+torch-geometric
+sentence-transformers
+xgboost
+lightgbm
+networkx
+scipy
+tqdm
