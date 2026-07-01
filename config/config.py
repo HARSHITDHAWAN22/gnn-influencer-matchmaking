@@ -142,3 +142,44 @@ COSINE_T_MULT = 2
 
 BEST_MODEL_PATH = "best_matchmaking_model.pt"
 BEST_ADV_MODEL_PATH = "best_advanced_model.pt"
+
+
+# ==================================================
+# GRAPH CONSTRUCTION
+# ==================================================
+
+MAX_BRAND_SAMPLE_SIZE = 1000
+MAX_INFLUENCER_MATCHES = 20
+MAX_INFLUENCER_SIMILARITY_SAMPLE = 500
+
+# ==================================================
+# COMPATIBILITY SCORING
+# ==================================================
+
+DEFAULT_BRAND_BUDGET = 0.5
+DEFAULT_INFLUENCER_PRICE = 500
+PRICE_NORMALIZATION_FACTOR = 1500
+
+BUDGET_WEIGHT = 0.30
+LANGUAGE_WEIGHT = 0.20
+ENGAGEMENT_WEIGHT = 0.30
+QUALITY_WEIGHT = 0.20
+
+DEFAULT_CONTENT_QUALITY = 0.5
+
+COMPATIBILITY_THRESHOLD = 0.30
+
+# ==================================================
+# SIMILARITY GRAPH
+# ==================================================
+
+TOP_SIMILAR_INFLUENCERS = 5
+MAX_BRAND_INDUSTRIES = 10
+MAX_BRANDS_PER_INDUSTRY = 20
+MAX_BRAND_CONNECTIONS = 5
+
+# ==================================================
+# FALLBACK GRAPH
+# ==================================================
+
+FALLBACK_EDGE_COUNT = 5000
