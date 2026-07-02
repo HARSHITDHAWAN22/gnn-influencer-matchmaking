@@ -183,3 +183,84 @@ MAX_BRAND_CONNECTIONS = 5
 # ==================================================
 
 FALLBACK_EDGE_COUNT = 5000
+
+
+
+# ==================================================
+# RECOMMENDATION
+# ==================================================
+
+TOP_K_RECOMMENDATIONS = 10
+EXPORT_TOP_K = 20
+EXPORT_PROGRESS_INTERVAL = 100
+
+RECOMMENDATION_OUTPUT_FILE = "matchmaking_recommendations.csv"
+
+# ==================================================
+# MATCH SCORE INTERPRETATION
+# ==================================================
+
+EXCELLENT_MATCH_SCORE = 0.40
+VERY_GOOD_MATCH_SCORE = 0.35
+GOOD_MATCH_SCORE = 0.30
+
+
+# ==================================================
+# EVALUATION
+# ==================================================
+
+DEFAULT_THRESHOLD = 0.50
+
+THRESHOLD_SEARCH_START = 0.01
+THRESHOLD_SEARCH_END = 0.99
+THRESHOLD_SEARCH_STEPS = 99
+
+CONFUSION_MATRIX_FIGSIZE = (18, 5)
+ROC_CURVE_FIGSIZE = (8, 6)
+PR_CURVE_FIGSIZE = (8, 6)
+METRICS_BAR_FIGSIZE = (10, 6)
+
+PLOT_Y_LIMIT = 1.05
+
+# ==================================================
+# MODEL CHECKPOINTS
+# ==================================================
+
+BEST_ADV_MODEL_PATH = "best_advanced_model.pt"
+
+
+# ==================================================
+# HYBRID MODEL (GNN + XGBOOST + LIGHTGBM)
+# ==================================================
+
+NEGATIVE_SAMPLES_PER_POSITIVE = 1
+
+# ==================================================
+# XGBOOST
+# ==================================================
+
+XGB_N_ESTIMATORS = 400
+XGB_MAX_DEPTH = 7
+XGB_LEARNING_RATE = 0.05
+XGB_SUBSAMPLE = 0.80
+XGB_COLSAMPLE_BYTREE = 0.80
+XGB_EVAL_METRIC = "logloss"
+XGB_TREE_METHOD = "hist"
+
+# ==================================================
+# LIGHTGBM
+# ==================================================
+
+LGBM_N_ESTIMATORS = 500
+LGBM_LEARNING_RATE = 0.05
+LGBM_NUM_LEAVES = 64
+LGBM_SUBSAMPLE = 0.80
+LGBM_COLSAMPLE_BYTREE = 0.80
+
+# ==================================================
+# HYBRID EVALUATION
+# ==================================================
+
+HYBRID_THRESHOLD = 0.50
+
+HYBRID_COMPARISON_FIGSIZE = (10, 6)
