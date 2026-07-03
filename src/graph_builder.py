@@ -1,3 +1,24 @@
+from config.config import (
+    MAX_BRAND_SAMPLE_SIZE,
+    MAX_INFLUENCER_MATCHES,
+    MAX_INFLUENCER_SIMILARITY_SAMPLE,
+    DEFAULT_BRAND_BUDGET,
+    DEFAULT_INFLUENCER_PRICE,
+    PRICE_NORMALIZATION_FACTOR,
+    BUDGET_WEIGHT,
+    LANGUAGE_WEIGHT,
+    ENGAGEMENT_WEIGHT,
+    QUALITY_WEIGHT,
+    DEFAULT_CONTENT_QUALITY,
+    COMPATIBILITY_THRESHOLD,
+    TOP_SIMILAR_INFLUENCERS,
+    MAX_BRAND_INDUSTRIES,
+    MAX_BRANDS_PER_INDUSTRY,
+    MAX_BRAND_CONNECTIONS,
+    FALLBACK_EDGE_COUNT,
+)
+
+
 # ==================================================
 # HETEROGENEOUS GRAPH DESIGN
 # ==================================================
@@ -110,7 +131,7 @@ def create_matching_graph(influencers_data, brands, influencer_x, brand_x):
     num_influencers = len(influencers_data)
 
     # Sample brands for edge creation (to keep graph manageable)
-    sample_size = min(1000, num_brands)
+    sample_size = min(MAX_BRAND_SAMPLE_SIZE, num_brands)
     sampled_brand_indices = np.random.choice(num_brands, sample_size, replace=False)
 
     for brand_idx in sampled_brand_indices:
@@ -119,13 +140,13 @@ def create_matching_graph(influencers_data, brands, influencer_x, brand_x):
         # Get brand requirements
         # Can increse the brand requirements later if we want in this section.
         brand_lang = brand_row.get('language_preference', 'English')
-        brand_budget = brand_row.get('budget_per_post', 0.5)
+        brand_budget = brand_row.get('budget_per_post', DEFAULT_BRAND_BUDGET)
         brand_region = brand_row.get('target_audience_region', 'Pan India')
         brand_format = brand_row.get('preferred_formats', 'Reels')
 
         # Sample influencers for this brand
         # Here samples 20 influencer for brand requirement we can change it according to our requirement later.
-        num_matches = min(20, num_influencers)  # Top 20 potential matches per brand
+        num_matches = min(MAX_INFLUENCER_MATCHES, num_influencers)  # Top 20 potential matches per brand
         candidate_inf_indices = np.random.choice(num_influencers, num_matches, replace=False)
 
         for inf_idx in candidate_inf_indices:
@@ -135,28 +156,28 @@ def create_matching_graph(influencers_data, brands, influencer_x, brand_x):
             compatibility_score = 0.0
 
             # 1. Budget compatibility (30% weight)
-            inf_price = inf_row.get('price_per_post', 500) / 1500  # normalize
+            inf_price = inf_row.get('price_per_post', DEFAULT_INFLUENCER_PRICE) / PRICE_NORMALIZATION_FACTOR  # normalize
             budget_diff = abs(brand_budget - inf_price)
-            budget_score = max(0, 1 - budget_diff) * 0.3
+            budget_score = max(0, 1 - budget_diff) * BUDGET_WEIGHT
             compatibility_score += budget_score
 
             # 2. Language matching (20% weight)
             # In real scenario, you'd have language info for influencers
-            lang_score = 0.2  # Assume compatible
+            lang_score = LANGUAGE_WEIGHT  # Assume compatible
             compatibility_score += lang_score
 
             # 3. Engagement matching (30% weight)
             inf_engagement = inf_row.get('ENGAGEMENT_RATE', 0)
-            engagement_score = min(1.0, inf_engagement * 100) * 0.3
+            engagement_score = min(1.0, inf_engagement * 100) * ENGAGEMENT_WEIGHT
             compatibility_score += engagement_score
 
             # 4. Content quality (20% weight)
-            inf_quality = inf_row.get('Content_quality_score', 0.5)
-            quality_score = inf_quality * 0.2
+            inf_quality = inf_row.get('Content_quality_score', DEFAULT_CONTENT_QUALITY)
+            quality_score = inf_quality * QUALITY_WEIGHT
             compatibility_score += quality_score
 
             # Add edge if compatibility is above threshold
-            if compatibility_score > 0.3:  # Threshold for edge creation
+            if compatibility_score > COMPATIBILITY_THRESHOLD:  # Threshold for edge creation
                 edge_list.append([brand_idx, inf_idx])
                 edge_scores.append(compatibility_score)
 
@@ -168,7 +189,7 @@ def create_matching_graph(influencers_data, brands, influencer_x, brand_x):
     else:
         # Fallback: create random edges
         print("  WARNING: No compatible edges found. Creating sample edges...")
-        num_edges = 5000
+        num_edges = FALLBACK_EDGE_COUNT
         brand_indices = torch.randint(0, num_brands, (num_edges,))
         inf_indices = torch.randint(0, num_influencers, (num_edges,))
         edge_index = torch.stack([brand_indices, inf_indices], dim=0)
@@ -195,7 +216,7 @@ print("\n[2/4] Creating influencer-influencer similarity edges...")
 
     if len(cat_cols) > 0:
         # Sample for efficiency
-        sample_infs = min(500, num_influencers)
+        sample_infs = min(MAX_INFLUENCER_SIMILARITY_SAMPLE, num_influencers)
         sampled_inf_indices = np.random.choice(num_influencers, sample_infs, replace=False)
 
         for inf_idx in sampled_inf_indices:
@@ -203,7 +224,7 @@ print("\n[2/4] Creating influencer-influencer similarity edges...")
 
             # Find similar influencers (same categories)
             similarities = (influencers_data[cat_cols].values * inf_cats).sum(axis=1)
-            top_similar = np.argsort(similarities)[-6:-1]  # Top 5 similar (excluding self)
+            top_similar = np.argsort(similarities)[-(TOP_SIMILAR_INFLUENCERS + 1):-1]  # Top 5 similar (excluding self)
 
             for similar_idx in top_similar:
                 if similar_idx != inf_idx and similarities[similar_idx] > 0:
@@ -226,12 +247,12 @@ print("\n[3/4] Creating brand-brand similarity edges...")
     brand_edges = []
 
     # Group by industry
-    for industry in brands['industry'].unique()[:10]:  # Limit to top 10 industries
+    for industry in brands['industry'].unique()[:MAX_BRAND_INDUSTRIES]:  # Limit to top 10 industries
         brand_indices = brands[brands['industry'] == industry].index.tolist()
 
         # Connect brands in same industry
-        for i in range(min(len(brand_indices), 20)):
-            for j in range(i+1, min(i+6, len(brand_indices))):
+        for i in range(min(len(brand_indices), MAX_BRANDS_PER_INDUSTRY)):
+            for j in range(i+1, min(i + MAX_BRAND_CONNECTIONS + 1, len(brand_indices))):
                 brand_edges.append([brand_indices[i], brand_indices[j]])
                 brand_edges.append([brand_indices[j], brand_indices[i]])
 
@@ -256,7 +277,6 @@ print("\n[3/4] Creating brand-brand similarity edges...")
 # Create the graph
 graph_data = create_matching_graph(influencers_data, brands, influencer_x, brand_x)
 
-   
 
 
 
