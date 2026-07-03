@@ -1,212 +1,159 @@
-import numpy as np
-from sklearn.metrics import confusion_matrix, classification_report, precision_recall_fscore_support
+from config.config import (
+    TOP_K_RECOMMENDATIONS,
+    EXPORT_TOP_K,
+    EXPORT_PROGRESS_INTERVAL,
+    RECOMMENDATION_OUTPUT_FILE,
+    EXCELLENT_MATCH_SCORE,
+    VERY_GOOD_MATCH_SCORE,
+    GOOD_MATCH_SCORE,
+)
 
-# Replace these names with the variables you use in the notebook:
-# y_true_prob / y_pred_prob = predicted probabilities for positive class (match)
-# y_true = ground-truth binary labels (1=match, 0=no-match)
-# If you currently compute pos = torch.sigmoid(...).cpu().numpy() use that as y_pred_prob
-
-# Example: if your code uses `pos` as probabilities and `neg` as negatives for eval:
-# y_pred_prob = np.concatenate([pos.cpu().numpy(), neg_pred.cpu().numpy()])  # adapt as required
-# y_true = np.concatenate([np.ones(len(pos)), np.zeros(len(neg_pred))])
-
-# If you already have y_pred_prob and y_true, skip above and use them.
-
-print("DEBUG: types and shapes")
-print("  y_pred_prob type:", type(y_pred_prob), "shape:", getattr(y_pred_prob, 'shape', None))
-print("  y_true type:", type(y_true), "shape:", getattr(y_true, 'shape', None))
-print("  unique y_true values:", np.unique(y_true, return_counts=True))
-
-# Thresholding
-thr = 0.5
-y_pred = (y_pred_prob >= thr).astype(int)
-
-print("\nCounts:")
-(unique, counts) = np.unique(y_pred, return_counts=True)
-print("  Predicted label counts:", dict(zip(unique, counts)))
-(unique, counts) = np.unique(y_true, return_counts=True)
-print("  True label counts:", dict(zip(unique, counts)))
-
-# Confusion matrix and classification report
-cm = confusion_matrix(y_true, y_pred)
-print("\nConfusion matrix (rows=true, cols=pred):\n", cm)
-print("\nclassification_report:\n", classification_report(y_true, y_pred, digits=4, zero_division=0))
-
-# More robust metric (shows where division-by-zero occurs)
-prec, rec, f1, sup = precision_recall_fscore_support(y_true, y_pred, zero_division=0)
-print("\nprecision_recall_fscore_support per-class:\n", list(zip(prec, rec, f1, sup)))
-
-
-# ====================================================================
-# FIXED EVALUATION FUNCTION
-# ====================================================================
+# ============================================================================
+# RECOMMENDATION FUNCTION
+# ============================================================================
 
 @torch.no_grad()
-def evaluate(model, data, edge_index, device, threshold=0.5):
+def recommend_influencers(model, data, brand_idx, top_k=TOP_K_RECOMMENDATIONS, device='cuda'):
+    """Recommend top-k influencers for a brand."""
     model.eval()
-    data, edge_index = data.to(device), edge_index.to(device)
+    data = data.to(device)
 
     # Get embeddings
-    z = model(data.x_dict, data.edge_index_dict)
+    z_dict = model(data.x_dict, data.edge_index_dict)
 
-    b, i = edge_index
-    valid = (b < z['brand'].size(0)) & (i < z['influencer'].size(0))
-    b, i = b[valid], i[valid]
+    # Brand embedding
+    brand_emb = z_dict['brand'][brand_idx].unsqueeze(0)
 
-    # Positive edges (true matches)
-    pos = torch.sigmoid(model.predict_match(z['brand'][b], z['influencer'][i]).squeeze())
+    # All influencer embeddings
+    inf_embs = z_dict['influencer']
 
-    # Negative sampling (random non-match pairs)
-    n = pos.size(0)
-    neg_b = torch.randint(0, z['brand'].size(0), (n,), device=device)
-    neg_i = torch.randint(0, z['influencer'].size(0), (n,), device=device)
-    neg = torch.sigmoid(model.predict_match(z['brand'][neg_b], z['influencer'][neg_i]).squeeze())
+    # Compute match scores
+    brand_emb_expanded = brand_emb.expand(inf_embs.size(0), -1)
+    scores = model.predict_match(brand_emb_expanded, inf_embs).squeeze()
+    scores = torch.sigmoid(scores)
 
-    # Combine
-    y_prob = torch.cat([pos, neg]).detach().cpu().numpy().astype(np.float64)
-    y_true = np.concatenate([np.ones(n, dtype=np.int64), np.zeros(n, dtype=np.int64)])
+    # Get top-k
+    top_scores, top_indices = torch.topk(scores, k=top_k)
 
-    # --- Metrics ---
-    auc = roc_auc_score(y_true, y_prob)
-    ap = average_precision_score(y_true, y_prob)
+    return top_indices.cpu().numpy(), top_scores.cpu().numpy()
 
-    y_pred = (y_prob >= threshold).astype(np.int64)
-    acc = accuracy_score(y_true, y_pred)
-
-    cm = confusion_matrix(y_true, y_pred)
-    rpt = classification_report(y_true, y_pred, digits=4, zero_division=0, output_dict=True)
-
-    # Handle missing class keys gracefully
-    precision = rpt.get('1', {}).get('precision', 0.0)
-    recall = rpt.get('1', {}).get('recall', 0.0)
-    f1 = rpt.get('1', {}).get('f1-score', 0.0)
-
-    # Debug sanity check
-    print("\n=== DEBUG METRICS ===")
-    print(f"y_true unique: {np.unique(y_true, return_counts=True)}")
-    print(f"y_pred unique: {np.unique(y_pred, return_counts=True)}")
-    print("Confusion matrix:\n", cm)
-    print("Classification report summary:", {k: rpt[k] for k in ['0','1'] if k in rpt})
-
-    return {
-        'auc': auc, 'ap': ap, 'accuracy': acc,
-        'precision': precision, 'recall': recall, 'f1': f1,
-        'cm': cm, 'y_true': y_true, 'y_prob': y_prob
-    }
-
-# ====================================================================
-# LOAD MODEL & DATA
-# ====================================================================
-
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
-graph_data = create_matching_graph(influencers_data, brands, influencer_x, brand_x)
-graph_data, train_e, val_e, test_e = split_edges(graph_data)
-
-model = FixedAdvancedModel(hidden_channels=256, out_channels=128, metadata=graph_data.metadata()).to(device)
-model.load_state_dict(torch.load('best_advanced_model.pt', map_location=device))
-
-
-
-# ====================================================================
-# SWEEP THRESHOLD ON VALIDATION SET
-# ====================================================================
-
-best_thresh, best_acc = 0.5, 0.0
-for t in np.linspace(0.01, 0.99, 99):
-    res = evaluate(model, graph_data, val_e, device, threshold=t)
-    if res['accuracy'] > best_acc:
-        best_acc, best_thresh = res['accuracy'], t
-
-print(f"\nBest threshold found: {best_thresh:.2f} (Validation Accuracy: {best_acc:.4f})")
-
-# ====================================================================
-# FINAL EVALUATION
-# ====================================================================
-
-print("\n--- Train ---")
-train_res = evaluate(model, graph_data, train_e, device, best_thresh)
-
-print("\n--- Validation ---")
-val_res = evaluate(model, graph_data, val_e, device, best_thresh)
-
-print("\n--- Test ---")
-test_res = evaluate(model, graph_data, test_e, device, best_thresh)
-
-# ====================================================================
-# SUMMARY TABLE
-# ====================================================================
-
-summary = pd.DataFrame([
-    ['Train', train_res['auc'], train_res['ap'], train_res['accuracy'], train_res['precision'], train_res['recall'], train_res['f1']],
-    ['Validation', val_res['auc'], val_res['ap'], val_res['accuracy'], val_res['precision'], val_res['recall'], val_res['f1']],
-    ['Test', test_res['auc'], test_res['ap'], test_res['accuracy'], test_res['precision'], test_res['recall'], test_res['f1']]
-], columns=['Split', 'AUC-ROC', 'AvgPrecision', 'Accuracy', 'Precision', 'Recall', 'F1-Score'])
+# ============================================================================
+# TEST RECOMMENDATIONS
+# ============================================================================
 
 print("\n" + "="*80)
-print(summary.to_string(index=False))
+print("TESTING RECOMMENDATIONS")
+print("="*80)
+
+# Get recommendations for first 3 brands
+for brand_idx in range(min(3, len(brands))):
+    print(f"\n{'='*80}")
+    print(f"BRAND: {brands.iloc[brand_idx]['brand_name']}")
+    print(f"Industry: {brands.iloc[brand_idx]['industry']}")
+    print(f"Language: {brands.iloc[brand_idx].get('language_preference', 'N/A')}")
+    print(f"Budget Range: {brands.iloc[brand_idx].get('campaign_budget_range', 'N/A')}")
+    print(f"{'='*80}")
+
+    top_inf, scores = recommend_influencers(model, graph_data, brand_idx, top_k=TOP_K_RECOMMENDATIONS, device=device)
+
+    print(f"\nTop {TOP_K_RECOMMENDATIONS} Recommended Influencers:\n")
+
+    for rank, (inf_idx, score) in enumerate(zip(top_inf, scores), 1):
+        inf = influencers_data.iloc[inf_idx]
+
+        print(f"Rank {rank:2d} | Match Score: {score:.4f}")
+        print(f"  Username: {inf.get('username', 'N/A')}")
+        print(f"  Followers: {inf.get('followers', 0):,.0f}")
+        print(f"  Engagement: {inf.get('ENGAGEMENT_RATE', 0):.4f}")
+        print(f"  Content Quality: {inf.get('Content_quality_score', 0):.4f}")
+        print(f"  Price: ₹{inf.get('price_per_post', 0):,.0f}")
+
+        cat_cols = [col for col in influencers_data.columns if col.startswith('cat_')]
+        active_cats = [col.replace('cat_', '').replace('_', ' ')
+                      for col in cat_cols if inf.get(col, 0) == 1]
+        if active_cats:
+            print(f"  Categories: {', '.join(active_cats[:3])}")
+        print()
+
+print("\ MATCHMAKING MODEL READY!")
 print("="*80)
 
 
-# ====================================================================
-# VISUALIZATION SECTION
-# ====================================================================
+# ==================================================
+# MATCH SCORE INTERPRETATION
+# ==================================================
 
-# --- 1️ Confusion Matrices ---
-fig, axes = plt.subplots(1, 3, figsize=(18, 5))
-splits = ['Train', 'Validation', 'Test']
-results = [train_res, val_res, test_res]
-
-for ax, name, res in zip(axes, splits, results):
-    cm = res['cm']
-    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', ax=ax)
-    ax.set_title(f'{name} Confusion Matrix', fontsize=13, weight='bold')
-    ax.set_xlabel('Predicted Label')
-    ax.set_ylabel('True Label')
+# Match Score Guidelines:
+# Score >= EXCELLENT_MATCH_SCORE : Excellent Match
+# Score >= VERY_GOOD_MATCH_SCORE : Very Good Match
+# Score >= GOOD_MATCH_SCORE : Good Match
+#
+# Higher scores indicate stronger compatibility between
+# brand requirements and influencer characteristics.
 
 
-# --- 2️ ROC Curves ---
-plt.figure(figsize=(8, 6))
-for name, res in zip(splits, results):
-    fpr, tpr, _ = roc_curve(res['y_true'], res['y_prob'])
-    plt.plot(fpr, tpr, label=f"{name} (AUC={res['auc']:.3f})")
-plt.plot([0, 1], [0, 1], '--', color='gray')
-plt.title("ROC Curves", fontsize=14, weight='bold')
-plt.xlabel("False Positive Rate")
-plt.ylabel("True Positive Rate")
-plt.legend()
-plt.grid(alpha=0.3)
-plt.show()
+# ==================================================
+# RECOMMENDATION EXPORT PIPELINE
+# ==================================================
+
+def export_all_recommendations(model, data, brands, influencers_data,
+                                output_file=RECOMMENDATION_OUTPUT_FILE,
+                                top_k=EXPORT_TOP_K, device='cuda'):
+    """Export recommendations for all brands to CSV."""
+    print(f"\n{'='*80}")
+    print("EXPORTING ALL RECOMMENDATIONS")
+    print(f"{'='*80}\n")
+
+    recommendations = []
+
+    for brand_idx in range(len(brands)):
+        if brand_idx % EXPORT_PROGRESS_INTERVAL == 0:
+            print(f"Processing brand {brand_idx}/{len(brands)}...")
+
+        brand_row = brands.iloc[brand_idx]
+        top_inf, scores = recommend_influencers(model, data, brand_idx, top_k, device)
+
+        for rank, (inf_idx, score) in enumerate(zip(top_inf, scores), 1):
+            inf_row = influencers_data.iloc[inf_idx]
+
+            recommendations.append({
+                'brand_idx': brand_idx,
+                'brand_name': brand_row.get('brand_name', ''),
+                'brand_industry': brand_row.get('industry', ''),
+                'brand_language': brand_row.get('language_preference', ''),
+                'brand_budget': brand_row.get('campaign_budget_range', ''),
+                'influencer_idx': inf_idx,
+                'influencer_username': inf_row.get('username', ''),
+                'influencer_followers': inf_row.get('followers', 0),
+                'influencer_engagement': inf_row.get('ENGAGEMENT_RATE', 0),
+                'influencer_quality': inf_row.get('Content_quality_score', 0),
+                'influencer_price': inf_row.get('price_per_post', 0),
+                'rank': rank,
+                'match_score': score
+            })
+
+    # Create DataFrame and save
+    df = pd.DataFrame(recommendations)
+    df.to_csv(output_file, index=False)
+
+    print(f"\n Recommendations exported to: {output_file}")
+    print(f"Total recommendations: {len(df)}")
+    print(f"\nSample recommendations:")
+    print(df.head(10))
+
+    return df
 
 
-# --- 3️ Precision–Recall Curves ---
-plt.figure(figsize=(8, 6))
-for name, res in zip(splits, results):
-    precision, recall, _ = precision_recall_curve(res['y_true'], res['y_prob'])
-    plt.plot(recall, precision, label=f"{name} (AP={res['ap']:.3f})")
-plt.title("Precision–Recall Curves", fontsize=14, weight='bold')
-plt.xlabel("Recall")
-plt.ylabel("Precision")
-plt.legend()
-plt.grid(alpha=0.3)
-plt.show()
+# ==================================================
+# GENERATING FINAL RECOMMENDATION REPORTS
+# ==================================================
 
-plt.tight_layout()
-plt.show()
-
-
- #--- ️4 Bar Chart of Final Metrics ---
-metric_df = pd.DataFrame([
-    ['Train', train_res['accuracy'], train_res['precision'], train_res['recall'], train_res['f1']],
-    ['Validation', val_res['accuracy'], val_res['precision'], val_res['recall'], val_res['f1']],
-    ['Test', test_res['accuracy'], test_res['precision'], test_res['recall'], test_res['f1']]
-], columns=['Split', 'Accuracy', 'Precision', 'Recall', 'F1'])
-
-metric_df.set_index('Split').plot(kind='bar', figsize=(10, 6), colormap='viridis')
-plt.title("Model Performance Comparison", fontsize=14, weight='bold')
-plt.ylabel("Score")
-plt.ylim(0, 1.05)
-plt.grid(axis='y', linestyle='--', alpha=0.6)
-plt.show()
-
+# Export recommendations
+recommendations_df = export_all_recommendations(
+    model, graph_data, brands, influencers_data,
+    output_file=RECOMMENDATION_OUTPUT_FILE,
+    top_k=EXPORT_TOP_K,
+    device=device
+)
 
 
