@@ -1,9 +1,19 @@
+from config.config import (
+    TOP_K_RECOMMENDATIONS,
+    EXPORT_TOP_K,
+    EXPORT_PROGRESS_INTERVAL,
+    RECOMMENDATION_OUTPUT_FILE,
+    EXCELLENT_MATCH_SCORE,
+    VERY_GOOD_MATCH_SCORE,
+    GOOD_MATCH_SCORE,
+)
+
 # ============================================================================
 # RECOMMENDATION FUNCTION
 # ============================================================================
 
 @torch.no_grad()
-def recommend_influencers(model, data, brand_idx, top_k=10, device='cuda'):
+def recommend_influencers(model, data, brand_idx, top_k=TOP_K_RECOMMENDATIONS, device='cuda'):
     """Recommend top-k influencers for a brand."""
     model.eval()
     data = data.to(device)
@@ -44,9 +54,9 @@ for brand_idx in range(min(3, len(brands))):
     print(f"Budget Range: {brands.iloc[brand_idx].get('campaign_budget_range', 'N/A')}")
     print(f"{'='*80}")
 
-    top_inf, scores = recommend_influencers(model, graph_data, brand_idx, top_k=10, device=device)
+    top_inf, scores = recommend_influencers(model, graph_data, brand_idx, top_k=TOP_K_RECOMMENDATIONS, device=device)
 
-    print(f"\nTop 10 Recommended Influencers:\n")
+    print(f"\nTop {TOP_K_RECOMMENDATIONS} Recommended Influencers:\n")
 
     for rank, (inf_idx, score) in enumerate(zip(top_inf, scores), 1):
         inf = influencers_data.iloc[inf_idx]
@@ -74,9 +84,9 @@ print("="*80)
 # ==================================================
 
 # Match Score Guidelines:
-# Score >= 0.40 : Excellent Match
-# Score >= 0.35 : Very Good Match
-# Score >= 0.30 : Good Match
+# Score >= EXCELLENT_MATCH_SCORE : Excellent Match
+# Score >= VERY_GOOD_MATCH_SCORE : Very Good Match
+# Score >= GOOD_MATCH_SCORE : Good Match
 #
 # Higher scores indicate stronger compatibility between
 # brand requirements and influencer characteristics.
@@ -87,8 +97,8 @@ print("="*80)
 # ==================================================
 
 def export_all_recommendations(model, data, brands, influencers_data,
-                                output_file='matchmaking_recommendations.csv',
-                                top_k=20, device='cuda'):
+                                output_file=RECOMMENDATION_OUTPUT_FILE,
+                                top_k=EXPORT_TOP_K, device='cuda'):
     """Export recommendations for all brands to CSV."""
     print(f"\n{'='*80}")
     print("EXPORTING ALL RECOMMENDATIONS")
@@ -97,7 +107,7 @@ def export_all_recommendations(model, data, brands, influencers_data,
     recommendations = []
 
     for brand_idx in range(len(brands)):
-        if brand_idx % 100 == 0:
+        if brand_idx % EXPORT_PROGRESS_INTERVAL == 0:
             print(f"Processing brand {brand_idx}/{len(brands)}...")
 
         brand_row = brands.iloc[brand_idx]
@@ -141,10 +151,9 @@ def export_all_recommendations(model, data, brands, influencers_data,
 # Export recommendations
 recommendations_df = export_all_recommendations(
     model, graph_data, brands, influencers_data,
-    output_file='matchmaking_recommendations.csv',
-    top_k=20,
+    output_file=RECOMMENDATION_OUTPUT_FILE,
+    top_k=EXPORT_TOP_K,
     device=device
 )
-
 
 
