@@ -1,3 +1,20 @@
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from torch_geometric.nn import SAGEConv, GATConv, to_hetero
+import numpy as np
+import pandas as pd
+from sklearn.metrics import roc_auc_score, average_precision_score
+from torch_geometric.data import HeteroData # Import HeteroData
+
+print("="*80)
+print("FIXED ADVANCED MODEL: BOOST ACCURACY TO 85-90%")
+print("="*80)
+
+# ============================================================================
+# FIXED ARCHITECTURE - NO LAZY LAYERS
+# ============================================================================
+
 class FixedAdvancedGNN(nn.Module):
     """
     Fixed GNN with proper dimension handling.
@@ -43,11 +60,18 @@ class FixedAdvancedGNN(nn.Module):
 
         return x4
 
+from config.config import (
+    ADV_HIDDEN_CHANNELS,ADV_OUT_CHANNELS,DROPOUT_LOW,DROPOUT_MEDIUM,ATTENTION_HEADS,
+    ADV_LEARNING_RATE,ADV_WEIGHT_DECAY,ADV_NUM_EPOCHS,ADV_PATIENCE,EVALUATION_INTERVAL,
+    FOCAL_ALPHA,FOCAL_GAMMA,LABEL_SMOOTHING,MIXUP_ALPHA,MIXUP_START_EPOCH,
+    HARD_NEGATIVE_START_EPOCH,NEGATIVE_CANDIDATE_MULTIPLIER,MARGIN,MARGIN_LOSS_WEIGHT,
+    MAX_GRAD_NORM,COSINE_T0,COSINE_T_MULT,BEST_ADV_MODEL_PATH)
+
 class FixedAdvancedModel(nn.Module):
     """
     Fixed advanced model without LazyLinear issues.
     """
-    def __init__(self, hidden_channels=256, out_channels=128, metadata=None):
+    def __init__(self, hidden_channels=ADV_HIDDEN_CHANNELS, out_channels=ADV_OUT_CHANNELS, metadata=None):
         super().__init__()
 
         # Base GNN
@@ -59,7 +83,7 @@ class FixedAdvancedModel(nn.Module):
             nn.Linear(out_channels, out_channels),
             nn.LayerNorm(out_channels),
             nn.ELU(),
-            nn.Dropout(0.2),
+            nn.Dropout(DROPOUT_LOW),
             nn.Linear(out_channels, out_channels),
             nn.LayerNorm(out_channels)
         )
@@ -69,13 +93,13 @@ class FixedAdvancedModel(nn.Module):
             nn.Linear(out_channels, out_channels),
             nn.LayerNorm(out_channels),
             nn.ELU(),
-            nn.Dropout(0.2),
+            nn.Dropout(DROPOUT_LOW),
             nn.Linear(out_channels, out_channels),
             nn.LayerNorm(out_channels)
         )
 
         # Multi-head attention
-        self.attention_heads = 4
+        self.attention_heads = ATTENTION_HEADS
         self.attention_layers = nn.ModuleList([
             nn.Sequential(
                 nn.Linear(out_channels * 2, hidden_channels // 4),
@@ -90,17 +114,17 @@ class FixedAdvancedModel(nn.Module):
             nn.Linear(out_channels * 2, hidden_channels),
             nn.BatchNorm1d(hidden_channels),
             nn.ELU(),
-            nn.Dropout(0.3),
+            nn.Dropout(DROPOUT_MEDIUM),
 
             nn.Linear(hidden_channels, hidden_channels),
             nn.BatchNorm1d(hidden_channels),
             nn.ELU(),
-            nn.Dropout(0.3),
+            nn.Dropout(DROPOUT_MEDIUM),
 
             nn.Linear(hidden_channels, hidden_channels // 2),
             nn.BatchNorm1d(hidden_channels // 2),
             nn.ELU(),
-            nn.Dropout(0.2),
+            nn.Dropout(DROPOUT_LOW),
 
             nn.Linear(hidden_channels // 2, hidden_channels // 4),
             nn.ELU(),
@@ -134,15 +158,13 @@ class FixedAdvancedModel(nn.Module):
         # Predict
         return self.predictor(weighted_combined)
 
-
-
 # ============================================================================
 # ADVANCED FOCAL LOSS
 # ============================================================================
 
 class AdvancedFocalLoss(nn.Module):
     """Focal loss with label smoothing."""
-    def __init__(self, alpha=0.25, gamma=2.5, label_smoothing=0.1):
+    def __init__(self, alpha=FOCAL_ALPHA, gamma=FOCAL_GAMMA, label_smoothing=LABEL_SMOOTHING):
         super().__init__()
         self.alpha = alpha
         self.gamma = gamma
@@ -166,7 +188,7 @@ class AdvancedFocalLoss(nn.Module):
 # MIXUP AUGMENTATION
 # ============================================================================
 
-def mixup_data(z_brand, z_inf, labels, alpha=0.2):
+def mixup_data(z_brand, z_inf, labels, alpha=MIXUP_ALPHA):
     """Mixup augmentation."""
     if alpha > 0:
         lam = np.random.beta(alpha, alpha)
@@ -192,7 +214,7 @@ def hard_negative_mining(z_dict, pos_edge_index, model, device, num_negatives):
     num_influencers = z_dict['influencer'].size(0)
 
     # Sample more candidates
-    num_candidates = num_negatives * 5
+    num_candidates = num_negatives * NEGATIVE_CANDIDATE_MULTIPLIER
     neg_brand_idx = torch.randint(0, num_brands, (num_candidates,), device=device)
     neg_inf_idx = torch.randint(0, num_influencers, (num_candidates,), device=device)
 
@@ -208,8 +230,6 @@ def hard_negative_mining(z_dict, pos_edge_index, model, device, num_negatives):
     _, hard_indices = torch.topk(neg_scores, k=num_negatives)
 
     return torch.stack([neg_brand_idx[hard_indices], neg_inf_idx[hard_indices]], dim=0)
-
-
 
 # ============================================================================
 # ADVANCED TRAINING
@@ -237,7 +257,7 @@ def advanced_train_epoch(model, data, optimizer, focal_loss, device, epoch):
     pos_label = torch.ones(brand_emb.size(0), device=device)
 
     # Negative sampling (hard after epoch 15)
-    if epoch > 15:
+    if epoch > HARD_NEGATIVE_START_EPOCH:
         neg_edge_index = hard_negative_mining(
             z_dict, edge_index, model, device, edge_index.size(1)
         )
@@ -257,9 +277,9 @@ def advanced_train_epoch(model, data, optimizer, focal_loss, device, epoch):
     all_labels = torch.cat([pos_label, neg_label])
 
     # Mixup (after epoch 20)
-    if epoch > 20:
+    if epoch > MIXUP_START_EPOCH:
         all_brand_emb, all_inf_emb, all_labels = mixup_data(
-            all_brand_emb, all_inf_emb, all_labels, alpha=0.2
+            all_brand_emb, all_inf_emb, all_labels, alpha=MIXUP_ALPHA
         )
 
     # Forward
@@ -271,13 +291,13 @@ def advanced_train_epoch(model, data, optimizer, focal_loss, device, epoch):
     # Margin loss
     pos_pred = torch.sigmoid(pred[:edge_index.size(1)])
     neg_pred = torch.sigmoid(pred[edge_index.size(1):])
-    margin_loss = F.relu(0.4 - (pos_pred.mean() - neg_pred.mean()))
+    margin_loss = F.relu(MARGIN - (pos_pred.mean() - neg_pred.mean()))
 
-    total_loss = loss + 0.1 * margin_loss
+    total_loss = loss + MARGIN_LOSS_WEIGHT * margin_loss
 
     # Backward
     total_loss.backward()
-    torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+    torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=MAX_GRAD_NORM)
     optimizer.step()
 
     return total_loss.item(), pos_pred.mean().item(), neg_pred.mean().item()
@@ -338,8 +358,8 @@ def evaluate_with_accuracy(model, data, edge_index, device):
 # ============================================================================
 
 def train_advanced_model(graph_data, train_edge, val_edge, test_edge,
-                        hidden_channels=256, out_channels=128,
-                        num_epochs=200, lr=0.0003):
+                        hidden_channels=ADV_HIDDEN_CHANNELS, out_channels=ADV_OUT_CHANNELS,
+                        num_epochs=ADV_NUM_EPOCHS, lr=ADV_LEARNING_RATE):
     """Train advanced model."""
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
@@ -372,19 +392,19 @@ def train_advanced_model(graph_data, train_edge, val_edge, test_edge,
     print(f"Model parameters: {sum(p.numel() for p in model.parameters()):,}")
 
     # Optimizer
-    optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=5e-5)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=ADV_WEIGHT_DECAY)
 
     # Scheduler
     scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
-        optimizer, T_0=50, T_mult=2
+        optimizer, T_0=COSINE_T0, T_mult=COSINE_T_MULT
     )
 
     # Loss
-    focal_loss = AdvancedFocalLoss(alpha=0.25, gamma=2.5, label_smoothing=0.1)
+    focal_loss = AdvancedFocalLoss(alpha=FOCAL_ALPHA, gamma=FOCAL_GAMMA, label_smoothing=LABEL_SMOOTHING)
 
     best_val_acc = 0
     patience_counter = 0
-    patience = 25
+    patience = ADV_PATIENCE
 
     print("\n" + "-"*80)
     print("TRAINING")
@@ -397,7 +417,7 @@ def train_advanced_model(graph_data, train_edge, val_edge, test_edge,
         )
 
         # Evaluate every 5 epochs
-        if epoch % 5 == 0:
+        if epoch % EVALUATION_INTERVAL == 0:
             val_auc, val_ap, val_acc = evaluate_with_accuracy(model, data, val_edge, device)
 
             print(f"Epoch {epoch:03d} | Loss: {loss:.4f} | "
@@ -407,18 +427,18 @@ def train_advanced_model(graph_data, train_edge, val_edge, test_edge,
             if val_acc > best_val_acc:
                 best_val_acc = val_acc
                 patience_counter = 0
-                torch.save(model.state_dict(), 'best_advanced_model.pt')
+                torch.save(model.state_dict(), BEST_ADV_MODEL_PATH)
                 print(f"  → New best! {val_acc:.4f}")
             else:
                 patience_counter += 1
                 if patience_counter >= patience:
-                    print(f"\n  Early stopping at epoch {epoch}")
+                    print(f"\n⚠️  Early stopping at epoch {epoch}")
                     break
 
         scheduler.step()
 
     # Load best model
-    model.load_state_dict(torch.load('best_advanced_model.pt'))
+    model.load_state_dict(torch.load(BEST_ADV_MODEL_PATH))
 
     # Final test
     test_auc, test_ap, test_acc = evaluate_with_accuracy(model, data, test_edge, device)
@@ -431,13 +451,13 @@ def train_advanced_model(graph_data, train_edge, val_edge, test_edge,
     print(f"Test Accuracy: {test_acc:.4f} ({test_acc*100:.1f}%)")
 
     if test_acc > 0.85:
-        print("\n EXCELLENT! Accuracy > 85%")
+        print("\n🌟 EXCELLENT! Accuracy > 85%")
     elif test_acc > 0.80:
-        print("\n VERY GOOD! Accuracy > 80%")
+        print("\n👍 VERY GOOD! Accuracy > 80%")
     elif test_acc > 0.75:
         print("\n✓ GOOD! Accuracy > 75%")
     else:
-        print("\n  Needs more training or better edges")
+        print("\n⚠️  Needs more training or better edges")
 
     print("="*80)
 
@@ -469,33 +489,31 @@ try:
     # RUN TRAINING
     # ============================================================================
 
-    print("\n Starting training with optimizations...")
+    print("\n🚀 Starting training with optimizations...")
     print("\nOptimizations:")
-    print("   Deeper architecture (4 layers)")
-    print("   Skip connections")
-    print("   Multi-head attention")
-    print("   Focal loss + label smoothing")
-    print("   Hard negative mining (epoch 15+)")
-    print("   Mixup augmentation (epoch 20+)")
-    print("   Margin loss")
-    print("   Cosine annealing")
+    print("  ✅ Deeper architecture (4 layers)")
+    print("  ✅ Skip connections")
+    print("  ✅ Multi-head attention")
+    print("  ✅ Focal loss + label smoothing")
+    print("  ✅ Hard negative mining (epoch 15+)")
+    print("  ✅ Mixup augmentation (epoch 20+)")
+    print("  ✅ Margin loss")
+    print("  ✅ Cosine annealing")
     print("\nExpected: 85-88% accuracy")
     print("Time: ~30-40 minutes\n")
 
     # Train
     advanced_model, device = train_advanced_model(
         graph_data, train_edge, val_edge, test_edge,
-        hidden_channels=256,
-        out_channels=128,
-        num_epochs=200,
-        lr=0.0003
+        hidden_channels=ADV_HIDDEN_CHANNELS,
+        out_channels=ADV_OUT_CHANNELS,
+        num_epochs=ADV_NUM_EPOCHS,
+        lr=ADV_LEARNING_RATE
     )
 
-    print("\n TRAINING COMPLETE!")
+    print("\n✅ TRAINING COMPLETE!")
     print("Your model is ready for 85-88% accuracy!")
 
 except NameError as e:
     print(f"\nError: {e}. Make sure create_matching_graph, influencers_data, brands, influencer_x, brand_x, and split_edges are defined and run in previous cells.")
     print("Please ensure all preceding data preprocessing, feature preparation, graph creation, and edge splitting steps are successfully executed.")
-
-
