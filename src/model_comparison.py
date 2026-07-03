@@ -1,3 +1,24 @@
+from config.config import (
+    NEGATIVE_SAMPLES_PER_POSITIVE,
+    HYBRID_THRESHOLD,
+    XGB_N_ESTIMATORS,
+    XGB_MAX_DEPTH,
+    XGB_LEARNING_RATE,
+    XGB_SUBSAMPLE,
+    XGB_COLSAMPLE_BYTREE,
+    XGB_EVAL_METRIC,
+    XGB_TREE_METHOD,
+    LGBM_N_ESTIMATORS,
+    LGBM_LEARNING_RATE,
+    LGBM_NUM_LEAVES,
+    LGBM_SUBSAMPLE,
+    LGBM_COLSAMPLE_BYTREE,
+    HYBRID_COMPARISON_FIGSIZE,
+    ROC_CURVE_FIGSIZE,
+    PR_CURVE_FIGSIZE,
+    PLOT_Y_LIMIT,
+)
+
 # =====================================================================
 # HYBRID GNN + XGBOOST / LIGHTGBM COMPARISON
 # =====================================================================
@@ -16,7 +37,7 @@ from sklearn.metrics import roc_curve, precision_recall_curve
 # 1️ Extract GNN-based embeddings for brand–influencer pairs
 # ---------------------------------------------------------------------
 @torch.no_grad()
-def build_pair_dataset(model, data, edge_index, device, n_negatives=1):
+def build_pair_dataset(model, data, edge_index, device, n_negatives=NEGATIVE_SAMPLES_PER_POSITIVE):
     model.eval()
     data = data.to(device)
     z = model(data.x_dict, data.edge_index_dict)
@@ -56,26 +77,26 @@ print(f"Train: {X_train.shape}, Val: {X_val.shape}, Test: {X_test.shape}")
 # 3️ Train XGBoost
 # ---------------------------------------------------------------------
 xgb = XGBClassifier(
-    n_estimators=400, max_depth=7, learning_rate=0.05,
-    subsample=0.8, colsample_bytree=0.8,
-    eval_metric='logloss', tree_method='hist', random_state=42
+    n_estimators=XGB_N_ESTIMATORS, max_depth=XGB_MAX_DEPTH, learning_rate=XGB_LEARNING_RATE,
+    subsample=XGB_SUBSAMPLE, colsample_bytree=XGB_COLSAMPLE_BYTREE,
+    eval_metric=XGB_EVAL_METRIC, tree_method=XGB_TREE_METHOD, random_state=42
 )
 xgb.fit(X_train, y_train, eval_set=[(X_val, y_val)], verbose=False)
 
 y_pred_prob_xgb = xgb.predict_proba(X_test)[:, 1]
-y_pred_xgb = (y_pred_prob_xgb >= 0.5).astype(int)
+y_pred_xgb = (y_pred_prob_xgb >= HYBRID_THRESHOLD).astype(int)
 
 # ---------------------------------------------------------------------
 # 4️ Train LightGBM
 # ---------------------------------------------------------------------
 lgbm = lgb.LGBMClassifier(
-    n_estimators=500, learning_rate=0.05, num_leaves=64,
-    subsample=0.8, colsample_bytree=0.8, random_state=42
+    n_estimators=LGBM_N_ESTIMATORS, learning_rate=LGBM_LEARNING_RATE, num_leaves=LGBM_NUM_LEAVES,
+    subsample=LGBM_SUBSAMPLE, colsample_bytree=LGBM_COLSAMPLE_BYTREE, random_state=42
 )
 lgbm.fit(X_train, y_train, eval_set=[(X_val, y_val)])
 
 y_pred_prob_lgb = lgbm.predict_proba(X_test)[:, 1]
-y_pred_lgb = (y_pred_prob_lgb >= 0.5).astype(int)
+y_pred_lgb = (y_pred_prob_lgb >= HYBRID_THRESHOLD).astype(int)
 
 
 # ---------------------------------------------------------------------
@@ -88,7 +109,7 @@ def compute_metrics(y_true, y_pred, y_prob, name):
     return {'Model': name, 'Accuracy': acc, 'Precision': prec, 'Recall': rec, 'F1': f1, 'AUC': auc}
 
 metrics = []
-metrics.append(compute_metrics(test_res['y_true'], (test_res['y_prob'] >= 0.5).astype(int), test_res['y_prob'], 'GNN'))
+metrics.append(compute_metrics(test_res['y_true'], (test_res['y_prob'] >= HYBRID_THRESHOLD).astype(int), test_res['y_prob'], 'GNN'))
 metrics.append(compute_metrics(y_test, y_pred_xgb, y_pred_prob_xgb, 'GNN + XGBoost'))
 metrics.append(compute_metrics(y_test, y_pred_lgb, y_pred_prob_lgb, 'GNN + LightGBM'))
 
@@ -100,16 +121,16 @@ print(metrics_df.to_string(index=False))
 # ---------------------------------------------------------------------
 # 6️ Visualization
 # ---------------------------------------------------------------------
-plt.figure(figsize=(10,6))
+plt.figure(figsize=HYBRID_COMPARISON_FIGSIZE)
 sns.barplot(data=metrics_df.melt(id_vars='Model', var_name='Metric', value_name='Score'),
             x='Metric', y='Score', hue='Model')
 plt.title("Performance Comparison: GNN vs XGBoost vs LightGBM", fontsize=14, weight='bold')
-plt.ylim(0, 1.05)
+plt.ylim(0, PLOT_Y_LIMIT)
 plt.grid(axis='y', linestyle='--', alpha=0.6)
 plt.show()
 
 # --- ROC Curves ---
-plt.figure(figsize=(8,6))
+plt.figure(figsize=ROC_CURVE_FIGSIZE)
 for (name, y_true, y_prob) in [
     ('GNN', test_res['y_true'], test_res['y_prob']),
     ('XGBoost', y_test, y_pred_prob_xgb),
@@ -126,7 +147,7 @@ plt.grid(alpha=0.3)
 plt.show()
 
 # --- Precision–Recall Curves ---
-plt.figure(figsize=(8,6))
+plt.figure(figsize=PR_CURVE_FIGSIZE)
 for (name, y_true, y_prob) in [
     ('GNN', test_res['y_true'], test_res['y_prob']),
     ('XGBoost', y_test, y_pred_prob_xgb),
