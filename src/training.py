@@ -1,4 +1,22 @@
 # ==================================================
+# IMPORTS
+# ==================================================
+
+from config.config import (
+    HIDDEN_CHANNELS,
+    OUT_CHANNELS,
+    LEARNING_RATE,
+    WEIGHT_DECAY,
+    NUM_EPOCHS,
+    PATIENCE,
+    VALIDATION_RATIO,
+    TEST_RATIO,
+    EVALUATION_INTERVAL,
+    BEST_MODEL_PATH,
+)
+
+
+# ==================================================
 # NEGATIVE SAMPLING FOR LINK PREDICTION
 # ==================================================
 
@@ -29,9 +47,16 @@ def train_epoch(model, data, optimizer, device):
 # MATCHMAKING GNN TRAINING PIPELINE
 # ==================================================
 
-def train_matchmaking_model(data, train_edge, val_edge, test_edge,
-                            hidden_channels=128, out_channels=64,
-                            num_epochs=100, lr=0.001):
+def train_matchmaking_model(
+    data,
+    train_edge,
+    val_edge,
+    test_edge,
+    hidden_channels=HIDDEN_CHANNELS,
+    out_channels=OUT_CHANNELS,
+    num_epochs=NUM_EPOCHS,
+    lr=LEARNING_RATE
+):
     """Complete training pipeline."""
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -57,7 +82,7 @@ def train_matchmaking_model(data, train_edge, val_edge, test_edge,
     with torch.no_grad():
         _ = model(data.x_dict, data.edge_index_dict)
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=1e-5)
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=WEIGHT_DECAY)
 
     print(f"\nModel parameters: {sum(p.numel() for p in model.parameters()):,}")
 
@@ -138,7 +163,7 @@ print("\n Training functions defined!")
 # TRAIN VALIDATION TEST EDGE SPLITTING
 # ==================================================
 
-def split_edges(data, val_ratio=0.1, test_ratio=0.2):
+def split_edges(     data,     val_ratio=VALIDATION_RATIO,     test_ratio=TEST_RATIO ):
     """Split edges into train/val/test."""
     edge_index = data['brand', 'matches_with', 'influencer'].edge_index
     num_edges = edge_index.size(1)
@@ -186,7 +211,7 @@ graph_data, train_edge, val_edge, test_edge = split_edges(graph_data)
 
     # Training loop
     best_val_auc = 0
-    patience = 15
+    patience = PATIENCE
     patience_counter = 0
 
     print(f"\n{'='*80}")
@@ -198,7 +223,7 @@ graph_data, train_edge, val_edge, test_edge = split_edges(graph_data)
         loss = train_epoch(model, data, optimizer, device)
 
         # Evaluate
-        if epoch % 5 == 0:
+        if epoch % EVALUATION_INTERVAL == 0:
             val_auc, val_ap = evaluate(model, data, val_edge, device)
 
             print(f"Epoch {epoch:03d} | Loss: {loss:.4f} | "
@@ -208,7 +233,7 @@ graph_data, train_edge, val_edge, test_edge = split_edges(graph_data)
             if val_auc > best_val_auc:
                 best_val_auc = val_auc
                 patience_counter = 0
-                torch.save(model.state_dict(), 'best_matchmaking_model.pt')
+                torch.save(model.state_dict(), BEST_MODEL_PATH)
             else:
                 patience_counter += 1
                 if patience_counter >= patience:
@@ -216,7 +241,7 @@ graph_data, train_edge, val_edge, test_edge = split_edges(graph_data)
                     break
 
     # Load best model
-    model.load_state_dict(torch.load('best_matchmaking_model.pt'))
+    model.load_state_dict(torch.load(BEST_MODEL_PATH))
     test_auc, test_ap = evaluate(model, data, test_edge, device)
 
     print(f"\n{'='*80}")
@@ -231,10 +256,10 @@ graph_data, train_edge, val_edge, test_edge = split_edges(graph_data)
 # Train the model
 model, device = train_matchmaking_model(
     graph_data, train_edge, val_edge, test_edge,
-    hidden_channels=128,
-    out_channels=64,
-    num_epochs=100,
-    lr=0.001
+   hidden_channels=HIDDEN_CHANNELS,
+out_channels=OUT_CHANNELS,
+num_epochs=NUM_EPOCHS,
+lr=LEARNING_RATE
 )
 
 
